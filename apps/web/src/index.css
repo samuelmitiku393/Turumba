@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Telegram CSS variable bridge ─────────────────────────────────────────── */
+:root {
+  --tg-bg:          #ffffff;
+  --tg-secondary:   #f0f0f0;
+  --tg-text:        #000000;
+  --tg-hint:        #999999;
+  --tg-link:        #2481cc;
+  --tg-button:      #2481cc;
+  --tg-button-text: #ffffff;
+  --tg-header:      #527da3;
+  --tg-accent:      #3390ec;
+  --tg-success:     #4cd964;
+  --tg-warning:     #ff9500;
+  --tg-danger:      #ff3b30;
+  --tg-border:      #e5e5e5;
+}
+
+/* ── Base reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--tg-secondary);
+  color: var(--tg-text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--tg-border); border-radius: 2px; }
+
+/* ── Skeleton loader animation ────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--tg-border) 25%,
+    var(--tg-secondary) 50%,
+    var(--tg-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ── Card base ────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--tg-bg);
+  border-radius: 16px;
+  border: 1px solid var(--tg-border);
+}
+
+/* ── Bottom nav safe area ─────────────────────────────────────────────────── */
+.pb-safe { padding-bottom: max(80px, env(safe-area-inset-bottom, 80px)); }
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Status badges ────────────────────────────────────────────────────────── */
+.badge-draft           { @apply bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300; }
+.badge-pending         { @apply bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400; }
+.badge-scheduled       { @apply bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400; }
+.badge-posted          { @apply bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400; }
+.badge-active          { @apply bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400; }
+.badge-expired         { @apply bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400; }
+.badge-cancelled       { @apply bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400; }
+
+/* ── Button variants ──────────────────────────────────────────────────────── */
+.btn-primary {
+  @apply bg-tg-button text-tg-button-text rounded-xl px-4 py-2.5 font-semibold text-sm
+         active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-secondary {
+  @apply bg-tg-secondary text-tg-text rounded-xl px-4 py-2.5 font-semibold text-sm border border-tg-border
+         active:scale-95 transition-all duration-150;
+}
+.btn-ghost {
+  @apply text-tg-link rounded-xl px-4 py-2.5 font-medium text-sm
+         active:bg-tg-secondary transition-all duration-150;
+}
+.btn-danger {
+  @apply bg-red-500 text-white rounded-xl px-4 py-2.5 font-semibold text-sm
+         active:scale-95 transition-all duration-150;
+}
+
+/* ── Input base ───────────────────────────────────────────────────────────── */
+.input {
+  @apply w-full bg-tg-secondary border border-tg-border rounded-xl px-4 py-3 text-sm text-tg-text
+         placeholder:text-tg-hint focus:outline-none focus:ring-2 focus:ring-tg-button
+         transition-all duration-150;
+}
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+.animate-fade-in  { animation: fadeIn 0.2s ease-out; }
+.animate-slide-up { animation: slideUp 0.3s ease-out; }
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── React Big Calendar overrides ─────────────────────────────────────────── */
+.rbc-calendar { background: var(--tg-bg) !important; color: var(--tg-text) !important; font-family: 'Inter', sans-serif !important; }
+.rbc-header { background: var(--tg-secondary) !important; color: var(--tg-hint) !important; border-color: var(--tg-border) !important; padding: 8px 4px !important; font-size: 11px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; }
+.rbc-day-bg, .rbc-month-row { border-color: var(--tg-border) !important; }
+.rbc-today { background: color-mix(in srgb, var(--tg-button) 8%, transparent) !important; }
+.rbc-event { border-radius: 6px !important; border: none !important; font-size: 11px !important; font-weight: 500 !important; }
+.rbc-toolbar button { color: var(--tg-text) !important; background: var(--tg-secondary) !important; border-color: var(--tg-border) !important; border-radius: 8px !important; font-size: 13px !important; }
+.rbc-toolbar button.rbc-active { background: var(--tg-button) !important; color: var(--tg-button-text) !important; }
+.rbc-off-range-bg { background: color-mix(in srgb, var(--tg-secondary) 60%, transparent) !important; }
