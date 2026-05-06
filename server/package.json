@@ -25,7 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-    "node-telegram-bot-api": "^0.63.0",
+    "node-telegram-bot-api": "^0.67.0",
     "prisma": "^5.14.0",
     "zod": "^3.23.8"
   },
