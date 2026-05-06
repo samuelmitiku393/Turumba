@@ -14,6 +14,7 @@ import analyticsRouter from './routes/analytics';
 import uploadRouter from './routes/upload';
 import { errorHandler } from './middleware/errorHandler';
 import { startNotificationScheduler } from './services/notificationService';
+import { startBot } from './bot';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -59,6 +60,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`🚀 Turumba server running on port ${PORT}`);
   startNotificationScheduler();
+  startBot();
 });
 
 export default app;

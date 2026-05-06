@@ -1,5 +1,5 @@
 services:
-  # Main API Server + Notification Scheduler
+  # Main API Server + Notification Scheduler + Telegram Bot (Merged for Free Tier)
   - type: web
     name: turumba-server
     env: node
@@ -16,25 +16,11 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: MINI_APP_URL
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
-        sync: false
-
-  # Background Bot Worker
-  - type: worker
-    name: turumba-bot
-    env: node
-    buildCommand: npm install && npm run db:generate && npm run build --workspace=apps/bot
-    startCommand: npm run start --workspace=apps/bot
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: MINI_APP_URL
         sync: false
