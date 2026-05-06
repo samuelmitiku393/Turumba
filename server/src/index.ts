@@ -4,6 +4,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
+// Add BigInt serialization support for JSON
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import authRouter from './routes/auth';
 import adsRouter from './routes/ads';
 import channelsRouter from './routes/channels';
