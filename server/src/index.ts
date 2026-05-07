@@ -22,6 +22,7 @@ import { startNotificationScheduler } from './services/notificationService';
 import { startBot } from './bot';
 
 const app = express();
+app.set('trust proxy', 1); // Trust Render's proxy for rate limiting
 const PORT = process.env.PORT || 4000;
 
 // ── Security ──────────────────────────────────────────────────────────────────
