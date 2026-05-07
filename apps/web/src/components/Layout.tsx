@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell, Tv2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import { notificationsApi } from '../api/endpoints'
@@ -10,6 +10,7 @@ import { useEffect } from 'react'
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { to: '/calendar',  icon: CalendarDays,   label: 'Calendar' },
+  { to: '/channels',  icon: Tv2,            label: 'Channels' },
   { to: '/ads',       icon: Megaphone,       label: 'Ads' },
   { to: '/team',      icon: Users,           label: 'Team' },
   { to: '/settings',  icon: Settings,        label: 'Settings' },
