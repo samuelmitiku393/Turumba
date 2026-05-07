@@ -30,6 +30,10 @@ router.post('/login', async (req, res: Response): Promise<void> => {
       return;
     }
 
+    // Check if this is the first user
+    const userCount = await prisma.user.count();
+    const defaultRole = userCount === 0 ? 'ADMIN' : 'POSTER';
+
     // Upsert user in database
     const user = await prisma.user.upsert({
       where: { telegramId: BigInt(telegramUser.id) },
@@ -38,6 +42,8 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         firstName: telegramUser.first_name,
         lastName: telegramUser.last_name,
         avatarUrl: telegramUser.photo_url,
+        // Auto-promote first user to ADMIN if they are the only one
+        role: userCount <= 1 ? 'ADMIN' : undefined,
       },
       create: {
         telegramId: BigInt(telegramUser.id),
@@ -45,7 +51,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         firstName: telegramUser.first_name,
         lastName: telegramUser.last_name,
         avatarUrl: telegramUser.photo_url,
-        role: 'POSTER', // default role; admin manually upgrades
+        role: defaultRole,
       },
     });
 
