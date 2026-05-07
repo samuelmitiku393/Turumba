@@ -7,12 +7,14 @@ import { useAuthStore } from '../stores/authStore'
 
 export default function SplashPage() {
   const navigate = useNavigate()
-  const { setAuth, isAuthenticated, token } = useAuthStore()
+  const { setAuth, isAuthenticated, token, user } = useAuthStore()
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    const tgUser = WebApp.initDataUnsafe?.user
+    // If we have a session AND it matches the current Telegram user, skip login
+    if (isAuthenticated && token && user && tgUser && String(tgUser.id) === user.telegramId) {
       navigate('/dashboard', { replace: true })
       return
     }
