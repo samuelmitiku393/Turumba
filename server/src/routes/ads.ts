@@ -18,11 +18,11 @@ const adSchema = z.object({
   advertiserEmail: z.string().email().optional().or(z.literal('')),
   channelId: z.string().cuid(),
   durationDays: z.number().int().min(1).max(365),
-  startDate: z.string().datetime().optional(),
-  scheduledAt: z.string().datetime().optional(),
+  startDate: z.string().optional(),
+  scheduledAt: z.string().optional(),
   assignedToId: z.string().cuid().optional(),
   templateId: z.string().cuid().optional(),
-  revenue: z.number().positive().optional(),
+  revenue: z.number().min(0).optional(),
   notes: z.string().max(1000).optional(),
 });
 

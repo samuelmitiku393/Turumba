@@ -91,7 +91,11 @@ export default function AdFormPage() {
       toast.success(isEdit ? 'Ad updated' : 'Ad created')
       navigate(-1)
     },
-    onError: () => toast.error('Failed to save ad')
+    onError: (e: any) => {
+      const errorMsg = e.response?.data?.error || 'Failed to save ad'
+      const details = e.response?.data?.details ? JSON.stringify(e.response.data.details) : ''
+      toast.error(`${errorMsg} ${details}`)
+    }
   })
 
   if (isEdit && adLoading) return <div className="p-4 text-center mt-10">Loading...</div>
