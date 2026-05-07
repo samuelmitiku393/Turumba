@@ -58,7 +58,7 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 });
 
 // POST /api/channels
-router.post('/', requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = channelSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() }); return; }
