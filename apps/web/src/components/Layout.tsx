@@ -1,10 +1,11 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell, Tv2 } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell, Tv2, FileSpreadsheet } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import { notificationsApi } from '../api/endpoints'
 import { useNotificationStore } from '../stores/notificationStore'
+import { useAuthStore } from '../stores/authStore'
 import { useEffect } from 'react'
 
 const NAV_ITEMS = [
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/channels',  icon: Tv2,            label: 'Channels' },
   { to: '/ads',       icon: Megaphone,       label: 'Ads' },
   { to: '/team',      icon: Users,           label: 'Team' },
+  { to: '/reports',   icon: FileSpreadsheet, label: 'Reports' },
   { to: '/settings',  icon: Settings,        label: 'Settings' },
 ]
 
@@ -21,6 +23,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const setUnreadCount = useNotificationStore(s => s.setUnreadCount)
   const unreadCount = useNotificationStore(s => s.unreadCount)
+  const user = useAuthStore(s => s.user)
 
   const { data } = useQuery({
     queryKey: ['notifications', 'count'],
@@ -87,6 +90,9 @@ export default function Layout() {
            style={{ background: 'var(--tg-bg)', borderTop: '1px solid var(--tg-border)' }}>
         <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
           {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
+            // Hide Reports for non-admins
+            if (to === '/reports' && user?.role !== 'ADMIN') return null
+            
             const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
             return (
               <button

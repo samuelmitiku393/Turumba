@@ -12,6 +12,7 @@ import ChannelsPage from './pages/ChannelsPage'
 import TeamPage from './pages/TeamPage'
 import SettingsPage from './pages/SettingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import ReportsPage from './pages/ReportsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/channels" element={<ChannelsPage />} />
           <Route path="/team" element={<TeamPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

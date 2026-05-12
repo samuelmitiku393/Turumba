@@ -116,3 +116,11 @@ export const uploadApi = {
 export const templatesApi = {
   list: () => api.get<Template[]>('/templates').then(r => r.data),
 }
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+export const reportsApi = {
+  monthly: (year: number, month: number) =>
+    api.get('/reports/monthly', { params: { year, month }, responseType: 'blob' }).then(r => r.data),
+  yearly: (year: number) =>
+    api.get('/reports/yearly', { params: { year }, responseType: 'blob' }).then(r => r.data),
+}

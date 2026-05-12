@@ -17,6 +17,7 @@ import teamRouter from './routes/team';
 import notificationsRouter from './routes/notifications';
 import analyticsRouter from './routes/analytics';
 import uploadRouter from './routes/upload';
+import reportsRouter from './routes/reports';
 import { errorHandler } from './middleware/errorHandler';
 import { startNotificationScheduler } from './services/notificationService';
 import { startBot } from './bot';
@@ -63,6 +64,7 @@ app.use('/api/team', teamRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/reports', reportsRouter);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use(errorHandler);
