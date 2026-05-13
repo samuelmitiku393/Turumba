@@ -11,6 +11,7 @@ import CalendarPage from './pages/CalendarPage'
 import ChannelsPage from './pages/ChannelsPage'
 import TeamPage from './pages/TeamPage'
 import ReportsPage from './pages/ReportsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 
