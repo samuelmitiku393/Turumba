@@ -38,6 +38,7 @@ Turumba is a full-stack Telegram Mini App designed for collaborative advertiseme
 - **Ad Chat**: Discuss specific ads with team members directly within the ad detail page.
 - **Activity Logs**: Full audit trail of who did what and when.
 - **Performance Dashboard**: Track revenue, active ads, and channel growth.
+- **Excel Reports**: Export detailed monthly and annual performance reports directly to Telegram.
 
 ---
 
@@ -82,8 +83,10 @@ Open the Turumba Bot on Telegram and click the **Open App** button (or use the l
 - Once an ad is posted manually to Telegram, mark it as `POSTED`.
 - The system will move it to `ACTIVE` until its duration expires, at which point it becomes `EXPIRED`.
 
-### 6. Analytics
+### 6. Analytics & Reports
 - Use the **Analytics** tab to view revenue reports and channel-specific performance metrics.
+- Admins can go to the **Reports** tab to generate detailed Excel `.xlsx` files.
+- Select a period (Month/Year) and the bot will send the report directly to your Telegram DM.
 - Admins receive a daily summary bot message at 8:00 AM.
 
 ---

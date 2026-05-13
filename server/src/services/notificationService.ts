@@ -1,16 +1,7 @@
 import cron from 'node-cron';
-import TelegramBot from 'node-telegram-bot-api';
 import prisma from '../prisma/client';
 import { NotificationType } from '@prisma/client';
-
-let bot: TelegramBot | null = null;
-
-function getBot(): TelegramBot {
-  if (!bot) {
-    bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { polling: false });
-  }
-  return bot;
-}
+import { bot } from '../bot';
 
 // ── Public helper used by routes ──────────────────────────────────────────────
 export async function createNotification(params: {
@@ -46,17 +37,17 @@ export async function createNotification(params: {
       params.type === 'APPROVAL_REJECTED'
     );
 
-    if (shouldSend && user.telegramId) {
+    if (shouldSend && user.telegramId && bot) {
       try {
-        const tgBot = getBot();
         const miniAppUrl = process.env.MINI_APP_URL;
         const adLink = params.adId && miniAppUrl ? `${miniAppUrl}/ads/${params.adId}` : undefined;
 
-        let text = `🔔 *${params.title}*\n${params.body}`;
-        if (adLink) text += `\n\n[View Ad](${adLink})`;
+        // Use HTML for safer parsing of ad titles with special chars
+        let text = `<b>${params.title}</b>\n${params.body}`;
+        if (adLink) text += `\n\n<a href="${adLink}">View Ad</a>`;
 
-        await tgBot.sendMessage(user.telegramId.toString(), text, {
-          parse_mode: 'Markdown',
+        await bot.sendMessage(user.telegramId.toString(), text, {
+          parse_mode: 'HTML',
           ...(adLink ? {
             reply_markup: {
               inline_keyboard: [[{ text: '📋 Open in App', web_app: { url: adLink } }]],
@@ -79,11 +70,11 @@ async function sendUpcomingReminders(): Promise<void> {
   try {
     const now = new Date();
     const in30 = new Date(now.getTime() + 30 * 60 * 1000);
-    const in35 = new Date(now.getTime() + 35 * 60 * 1000); // 5-min window to avoid duplicates
+    const in36 = new Date(now.getTime() + 36 * 60 * 1000); // 6-min window
 
     const ads = await prisma.ad.findMany({
       where: {
-        scheduledAt: { gte: in30, lte: in35 },
+        scheduledAt: { gte: in30, lt: in36 },
         status: 'SCHEDULED',
         assignedToId: { not: null },
       },
@@ -95,6 +86,13 @@ async function sendUpcomingReminders(): Promise<void> {
 
     for (const ad of ads) {
       if (!ad.assignedTo) continue;
+
+      // Check if reminder was already sent
+      const existing = await prisma.notification.findFirst({
+        where: { adId: ad.id, type: 'REMINDER' }
+      });
+      if (existing) continue;
+
       await createNotification({
         userId: ad.assignedTo.id,
         type: 'REMINDER',
@@ -114,11 +112,11 @@ async function sendExpiryWarnings(): Promise<void> {
   try {
     const now = new Date();
     const in24 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const in25 = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    const in26 = new Date(now.getTime() + 26 * 60 * 60 * 1000);
 
     const ads = await prisma.ad.findMany({
       where: {
-        expiresAt: { gte: in24, lte: in25 },
+        expiresAt: { gte: in24, lt: in26 },
         status: 'ACTIVE',
       },
       include: {
@@ -131,6 +129,13 @@ async function sendExpiryWarnings(): Promise<void> {
     for (const ad of ads) {
       const targets = [ad.assignedTo, ad.createdBy].filter(Boolean);
       const seen = new Set<string>();
+
+      // Check if expiry warning was already sent for this ad
+      const existing = await prisma.notification.findFirst({
+        where: { adId: ad.id, type: 'EXPIRY_WARNING' }
+      });
+      if (existing) continue;
+
       for (const user of targets) {
         if (!user || seen.has(user.id)) continue;
         seen.add(user.id);

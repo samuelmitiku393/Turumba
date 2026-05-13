@@ -9,6 +9,7 @@ A full-stack Telegram Mini App designed for marketing teams to manage ad posting
 - **Team Collaboration**: Admin/Manager/Poster roles, internal chat on ads.
 - **Notifications**: Automated Telegram messages for assignments, reminders (30m), and expiry (24h).
 - **Analytics**: Revenue tracking (in ETB), channel performance, and team productivity.
+- **Excel Reports**: Monthly and annual `.xlsx` exports sent directly to Admin DMs via the bot.
 
 ## Project Structure
 

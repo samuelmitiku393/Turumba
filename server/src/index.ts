@@ -72,8 +72,8 @@ app.use(errorHandler);
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`🚀 Turumba server running on port ${PORT}`);
-  startNotificationScheduler();
   startBot();
+  startNotificationScheduler();
 });
 
 export default app;
