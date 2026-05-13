@@ -3,6 +3,7 @@ import { clsx } from 'clsx'
 import { format, isPast, isToday } from 'date-fns'
 import { Calendar, Clock, User, MessageCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 import type { Ad } from '../types'
 import StatusBadge from './StatusBadge'
 
@@ -13,6 +14,8 @@ interface Props {
 
 export default function AdCard({ ad, view = 'list' }: Props) {
   const navigate = useNavigate()
+  const user = useAuthStore(s => s.user)
+  const isPoster = user?.role === 'POSTER'
 
   const scheduledDate = ad.scheduledAt ? new Date(ad.scheduledAt) : null
   const expiresDate = ad.expiresAt ? new Date(ad.expiresAt) : null
@@ -106,7 +109,7 @@ export default function AdCard({ ad, view = 'list' }: Props) {
             <span className="text-[10px]">{ad._count.chatMessages}</span>
           </div>
         )}
-        {ad.revenue && (
+        {ad.revenue && !isPoster && (
           <span className="text-[10px] font-semibold text-green-600 ml-auto">
             {ad.currency} {Number(ad.revenue).toLocaleString()}
           </span>

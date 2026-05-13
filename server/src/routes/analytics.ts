@@ -6,11 +6,16 @@ const router = Router();
 router.use(authenticate);
 
 // GET /api/analytics/dashboard  – overview stats
-router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/dashboard', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 86400000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const isPoster = req.user?.role === 'POSTER';
+
+    const baseWhere = isPoster 
+      ? { OR: [{ createdById: req.user!.id }, { assignedToId: req.user!.id }] } 
+      : {};
 
     const [
       totalAds,
@@ -22,10 +27,11 @@ router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void>
       totalRevenue,
       monthRevenue,
     ] = await prisma.$transaction([
-      prisma.ad.count(),
-      prisma.ad.count({ where: { status: 'ACTIVE' } }),
+      prisma.ad.count({ where: baseWhere }),
+      prisma.ad.count({ where: { ...baseWhere, status: 'ACTIVE' } }),
       prisma.ad.count({
         where: {
+          ...baseWhere,
           scheduledAt: {
             gte: new Date(now.setHours(0, 0, 0, 0)),
             lte: new Date(now.setHours(23, 59, 59, 999)),
@@ -34,14 +40,17 @@ router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void>
         },
       }),
       prisma.ad.count({
-        where: { expiresAt: { gte: now, lte: weekFromNow }, status: 'ACTIVE' },
+        where: { ...baseWhere, expiresAt: { gte: now, lte: weekFromNow }, status: 'ACTIVE' },
       }),
       prisma.channel.count(),
       prisma.channel.count({ where: { isActive: true } }),
-      prisma.ad.aggregate({ _sum: { revenue: true }, where: { status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } } }),
+      prisma.ad.aggregate({ 
+        _sum: { revenue: true }, 
+        where: { ...baseWhere, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } } 
+      }),
       prisma.ad.aggregate({
         _sum: { revenue: true },
-        where: { createdAt: { gte: monthStart }, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
+        where: { ...baseWhere, createdAt: { gte: monthStart }, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
       }),
     ]);
 
@@ -50,10 +59,10 @@ router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void>
       activeAds,
       pendingToday,
       expiringThisWeek,
-      totalChannels,
-      activeChannels,
-      totalRevenue: totalRevenue._sum.revenue ?? 0,
-      monthRevenue: monthRevenue._sum.revenue ?? 0,
+      totalChannels: isPoster ? undefined : totalChannels,
+      activeChannels: isPoster ? undefined : activeChannels,
+      totalRevenue: isPoster ? 0 : (totalRevenue._sum.revenue ?? 0),
+      monthRevenue: isPoster ? 0 : (monthRevenue._sum.revenue ?? 0),
       currency: 'ETB',
     });
   } catch (err) {
@@ -62,8 +71,10 @@ router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void>
   }
 });
 
-// GET /api/analytics/revenue  – revenue by advertiser
-router.get('/revenue', async (_req: AuthRequest, res: Response): Promise<void> => {
+import { requireManager } from '../middleware/auth';
+
+// GET /api/analytics/revenue  – revenue by advertiser (restricted)
+router.get('/revenue', requireManager, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const data = await prisma.ad.groupBy({
       by: ['advertiserName'],
@@ -85,8 +96,9 @@ router.get('/revenue', async (_req: AuthRequest, res: Response): Promise<void> =
   }
 });
 
-// GET /api/analytics/channels  – channel performance
-router.get('/channels', async (_req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/analytics/channels  – channel performance (restricted)
+router.get('/channels', requireManager, async (_req: AuthRequest, res: Response): Promise<void> => {
+// ... (rest of the logic remains the same, just wrapped in requireManager)
   try {
     const channels = await prisma.channel.findMany({
       include: {
@@ -117,8 +129,8 @@ router.get('/channels', async (_req: AuthRequest, res: Response): Promise<void> 
   }
 });
 
-// GET /api/analytics/team  – team productivity
-router.get('/team', async (_req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/analytics/team  – team productivity (restricted)
+router.get('/team', requireManager, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -156,9 +168,13 @@ router.get('/team', async (_req: AuthRequest, res: Response): Promise<void> => {
 });
 
 // GET /api/analytics/activity  – recent activity feed
-router.get('/activity', async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/activity', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const isPoster = req.user?.role === 'POSTER';
+    const where = isPoster ? { userId: req.user!.id } : {};
+    
     const activities = await prisma.activityLog.findMany({
+      where,
       include: {
         user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true, role: true } },
         ad: { select: { id: true, title: true } },
@@ -174,12 +190,16 @@ router.get('/activity', async (_req: AuthRequest, res: Response): Promise<void> 
 });
 
 // GET /api/analytics/upcoming  – upcoming 7 days
-router.get('/upcoming', async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/upcoming', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 86400000);
+    const isPoster = req.user?.role === 'POSTER';
+    const baseWhere = isPoster ? { OR: [{ createdById: req.user!.id }, { assignedToId: req.user!.id }] } : {};
+
     const ads = await prisma.ad.findMany({
       where: {
+        ...baseWhere,
         scheduledAt: { gte: now, lte: weekFromNow },
         status: { in: ['SCHEDULED', 'PENDING_APPROVAL'] },
       },

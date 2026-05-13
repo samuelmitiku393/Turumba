@@ -96,8 +96,10 @@ export default function Layout() {
            style={{ background: 'var(--tg-bg)', borderTop: '1px solid var(--tg-border)' }}>
         <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
           {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
-            // Hide Reports for non-admins (only if user is loaded and not ADMIN)
-            if (to === '/reports' && user && user.role !== 'ADMIN') return null
+            // Role-based visibility
+            const isPoster = user?.role === 'POSTER'
+            const restrictedTabs = ['/team', '/analytics', '/reports']
+            if (isPoster && restrictedTabs.includes(to)) return null
             
             const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
             return (
