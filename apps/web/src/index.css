@@ -86,6 +86,7 @@ body {
 .badge-active          { @apply bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400; }
 .badge-expired         { @apply bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400; }
 .badge-cancelled       { @apply bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400; }
+.badge-rejected        { @apply bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400; }
 
 /* ── Button variants ──────────────────────────────────────────────────────── */
 .btn-primary {

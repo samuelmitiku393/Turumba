@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell, Tv2, FileSpreadsheet } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
-import { notificationsApi } from '../api/endpoints'
+import { notificationsApi, authApi } from '../api/endpoints'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useAuthStore } from '../stores/authStore'
 import { useEffect } from 'react'
@@ -24,6 +24,12 @@ export default function Layout() {
   const setUnreadCount = useNotificationStore(s => s.setUnreadCount)
   const unreadCount = useNotificationStore(s => s.unreadCount)
   const user = useAuthStore(s => s.user)
+  const setUser = useAuthStore(s => s.setUser)
+
+  useEffect(() => {
+    // Refresh user profile on mount to sync role changes (e.g. promotion to ADMIN)
+    authApi.me().then(u => setUser(u)).catch(() => {})
+  }, [setUser])
 
   const { data } = useQuery({
     queryKey: ['notifications', 'count'],
@@ -73,7 +79,7 @@ export default function Layout() {
 
       {/* Notification bell */}
       <motion.button
-        onClick={() => navigate('/settings?tab=notifications')}
+        onClick={() => navigate('/notifications')}
         className="fixed bottom-24 left-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center card"
         whileTap={{ scale: 0.92 }}
       >

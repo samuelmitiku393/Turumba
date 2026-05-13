@@ -8,6 +8,7 @@ export type AdStatus =
   | 'ACTIVE'
   | 'EXPIRED'
   | 'CANCELLED'
+  | 'REJECTED'
 
 export type NotificationType =
   | 'ASSIGNMENT'

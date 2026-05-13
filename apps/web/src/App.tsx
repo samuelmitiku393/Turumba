@@ -10,9 +10,9 @@ import AdFormPage from './pages/AdFormPage'
 import CalendarPage from './pages/CalendarPage'
 import ChannelsPage from './pages/ChannelsPage'
 import TeamPage from './pages/TeamPage'
-import SettingsPage from './pages/SettingsPage'
-import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
+import NotificationsPage from './pages/NotificationsPage'
+import SettingsPage from './pages/SettingsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -54,6 +54,7 @@ export default function App() {
           <Route path="/team" element={<TeamPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

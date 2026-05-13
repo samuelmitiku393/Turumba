@@ -71,7 +71,8 @@ export default function CalendarPage() {
             onNavigate={setDate}
             onSelectEvent={(e: any) => navigate(`/ads/${e.id}`)}
             eventPropGetter={eventPropGetter}
-            views={['month', 'week', 'day']}
+            views={['week', 'day']}
+            defaultView={Views.WEEK}
             popup
             selectable
             onSelectSlot={(slotInfo) => navigate(`/ads/new?date=${slotInfo.start.toISOString()}`)}

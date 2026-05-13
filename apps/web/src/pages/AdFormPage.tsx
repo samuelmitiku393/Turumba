@@ -186,6 +186,37 @@ export default function AdFormPage() {
             <input type="number" {...register('revenue', { valueAsNumber: true })} className="input" placeholder="0.00" />
           </div>
         </div>
+
+        {/* Bottom Actions */}
+        <div className="flex flex-col gap-3 pt-4">
+          <button
+            onClick={handleSubmit(d => mut.mutate(d))}
+            disabled={mut.isPending || uploading}
+            className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2"
+          >
+            {mut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+            {isEdit ? 'Save Changes' : 'Create & Save as Draft'}
+          </button>
+          
+          {!isEdit && (
+             <button
+                onClick={handleSubmit(d => {
+                  mut.mutate(d, {
+                    onSuccess: (newAd) => {
+                       adsApi.updateStatus(newAd.id, 'PENDING_APPROVAL').then(() => {
+                         toast.success('Ad created and submitted for approval')
+                         navigate(-1)
+                       })
+                    }
+                  })
+                })}
+                disabled={mut.isPending || uploading}
+                className="btn-secondary w-full py-3 text-sm flex items-center justify-center gap-2 border-[var(--tg-button)] text-[var(--tg-button)]"
+             >
+                Create & Submit for Approval
+             </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -71,9 +71,11 @@ export default function ChannelsPage() {
     <div className="flex flex-col min-h-dvh">
       <div className="sticky top-0 z-10 bg-[var(--tg-secondary)]/80 backdrop-blur-md px-4 pt-4 pb-3 border-b border-[var(--tg-border)] flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--tg-text)]">Channels</h1>
-        <button onClick={openNew} className="p-2 rounded-full bg-[var(--tg-button)] text-[var(--tg-button-text)] shadow-sm">
-          <Plus className="w-5 h-5" />
-        </button>
+        {isManager && (
+          <button onClick={openNew} className="p-2 rounded-full bg-[var(--tg-button)] text-[var(--tg-button-text)] shadow-sm">
+            <Plus className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 p-4 space-y-3">

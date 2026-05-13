@@ -122,6 +122,13 @@ export default function AdDetailPage() {
           <h3 className="text-xs font-semibold text-[var(--tg-hint)] uppercase tracking-wider">Content</h3>
           <p className="text-sm text-[var(--tg-text)] whitespace-pre-wrap">{ad.content}</p>
           
+          {ad.rejectionReason && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+              <span className="text-xs font-bold text-red-600 uppercase block mb-1">Rejection Reason</span>
+              <p className="text-sm text-red-700 italic">"{ad.rejectionReason}"</p>
+            </div>
+          )}
+          
           {ad.mediaUrls.length > 0 && (
             <div className="grid grid-cols-2 gap-2 mt-3">
               {ad.mediaUrls.map((url, i) => (
@@ -141,9 +148,12 @@ export default function AdDetailPage() {
         <div className="card p-4">
           <h3 className="text-xs font-semibold text-[var(--tg-hint)] uppercase tracking-wider mb-3">Actions</h3>
           <div className="flex flex-wrap gap-2">
-            {ad.status === 'DRAFT' && (
-              <button onClick={() => statusMut.mutate({ status: 'PENDING_APPROVAL' })} className="btn-primary">
-                Submit for Approval
+            {(ad.status === 'DRAFT' || ad.status === 'REJECTED') && (
+              <button 
+                onClick={() => ad.status === 'REJECTED' ? navigate(`/ads/${id}/edit`) : statusMut.mutate({ status: 'PENDING_APPROVAL' })} 
+                className="btn-primary"
+              >
+                {ad.status === 'REJECTED' ? 'Edit & Resubmit' : 'Submit for Approval'}
               </button>
             )}
             {ad.status === 'PENDING_APPROVAL' && isManager && (
@@ -151,7 +161,7 @@ export default function AdDetailPage() {
                 <button onClick={() => statusMut.mutate({ status: 'SCHEDULED' })} className="btn-primary bg-green-500 text-white">Approve & Schedule</button>
                 <button onClick={() => {
                   const reason = prompt('Rejection reason:')
-                  if (reason) statusMut.mutate({ status: 'DRAFT', reason })
+                  if (reason) statusMut.mutate({ status: 'REJECTED', reason })
                 }} className="btn-danger">Reject</button>
               </>
             )}

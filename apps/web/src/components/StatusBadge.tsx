@@ -9,6 +9,7 @@ const CONFIG: Record<AdStatus, { label: string; className: string }> = {
   ACTIVE:           { label: 'Active',           className: 'badge-active' },
   EXPIRED:          { label: 'Expired',          className: 'badge-expired' },
   CANCELLED:        { label: 'Cancelled',        className: 'badge-cancelled' },
+  REJECTED:         { label: 'Rejected',         className: 'badge-rejected' },
 }
 
 interface Props {

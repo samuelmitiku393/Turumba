@@ -96,8 +96,8 @@ async function sendUpcomingReminders(): Promise<void> {
       await createNotification({
         userId: ad.assignedTo.id,
         type: 'REMINDER',
-        title: '⏰ Posting Reminder',
-        body: `"${ad.title}" is scheduled to post on ${ad.channel.name} in 30 minutes!`,
+        title: '⏰ Action Required: Post Ad',
+        body: `It's almost time! "${ad.title}" is scheduled for ${ad.channel.name} in 30 minutes. Please prepare the media and copy.`,
         adId: ad.id,
         sendTelegram: true,
       });
@@ -142,8 +142,8 @@ async function sendExpiryWarnings(): Promise<void> {
         await createNotification({
           userId: user.id,
           type: 'EXPIRY_WARNING',
-          title: '⚠️ Ad Expiring Soon',
-          body: `"${ad.title}" on ${ad.channel.name} expires in 24 hours!`,
+          title: '⚠️ Expiry Alert: 24h Left',
+          body: `The ad "${ad.title}" on ${ad.channel.name} will expire in 24 hours. Check performance or contact the advertiser if a renewal is needed.`,
           adId: ad.id,
           sendTelegram: true,
         });
