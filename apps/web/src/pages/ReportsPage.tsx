@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { FileSpreadsheet, Download, Loader2 } from 'lucide-react'
+import { FileSpreadsheet, Send, Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
 import { reportsApi } from '../api/endpoints'
@@ -16,39 +16,34 @@ export default function ReportsPage() {
   const [type, setType] = useState<'monthly' | 'yearly'>('monthly')
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
-  const [isDownloading, setIsDownloading] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [lastSent, setLastSent] = useState<string | null>(null)
 
   // Only accessible by ADMIN
   if (!user || user.role !== 'ADMIN') {
     return <Navigate to="/dashboard" replace />
   }
 
-  const handleDownload = async () => {
+  const handleSend = async () => {
     try {
-      setIsDownloading(true)
-      const data = type === 'monthly'
-        ? await reportsApi.monthly(year, month)
-        : await reportsApi.yearly(year)
+      setIsSending(true)
+      setLastSent(null)
 
-      // Create blob link to download
-      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = type === 'monthly'
-        ? `Turumba_Report_${MONTHS[month - 1]}_${year}.xlsx`
-        : `Turumba_Annual_Report_${year}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      toast.success(`${type === 'monthly' ? 'Monthly' : 'Yearly'} report downloaded!`)
+      if (type === 'monthly') {
+        await reportsApi.monthly(year, month)
+        const label = `${MONTHS[month - 1]} ${year}`
+        setLastSent(label)
+        toast.success(`Monthly report for ${label} sent to your Telegram DM!`)
+      } else {
+        await reportsApi.yearly(year)
+        setLastSent(`${year}`)
+        toast.success(`Yearly report for ${year} sent to your Telegram DM!`)
+      }
     } catch (err) {
-      console.error('Download failed:', err)
-      toast.error('Failed to download report')
+      console.error('Report send failed:', err)
+      toast.error('Failed to send report. Please try again.')
     } finally {
-      setIsDownloading(false)
+      setIsSending(false)
     }
   }
 
@@ -61,21 +56,23 @@ export default function ReportsPage() {
         <h1 className="text-2xl font-bold text-[var(--tg-text)]">Reports</h1>
       </div>
 
-      <div className="p-4 space-y-6">
-        <div className="card p-5">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-[var(--tg-text)]">Export Data</h2>
-              <p className="text-xs text-[var(--tg-hint)]">Download detailed Excel reports</p>
-            </div>
+      <div className="p-4 space-y-4">
+        {/* Info card */}
+        <div className="card p-4 flex items-start gap-3">
+          <FileSpreadsheet className="w-5 h-5 text-[var(--tg-button)] shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-[var(--tg-text)]">Excel report via Telegram</p>
+            <p className="text-xs text-[var(--tg-hint)] mt-0.5">
+              Select a period and tap "Send". The bot will deliver the <code>.xlsx</code> file directly to your Telegram DM.
+            </p>
           </div>
+        </div>
 
+        <div className="card p-5">
+          {/* Type toggle */}
           <div className="flex bg-[var(--tg-secondary)] p-1 rounded-xl mb-6">
             <button
-              onClick={() => setType('monthly')}
+              onClick={() => { setType('monthly'); setLastSent(null) }}
               className={clsx(
                 'flex-1 py-2 text-sm font-medium rounded-lg transition-colors',
                 type === 'monthly' ? 'bg-[var(--tg-button)] text-[var(--tg-button-text)] shadow-sm' : 'text-[var(--tg-hint)]'
@@ -84,7 +81,7 @@ export default function ReportsPage() {
               Monthly
             </button>
             <button
-              onClick={() => setType('yearly')}
+              onClick={() => { setType('yearly'); setLastSent(null) }}
               className={clsx(
                 'flex-1 py-2 text-sm font-medium rounded-lg transition-colors',
                 type === 'yearly' ? 'bg-[var(--tg-button)] text-[var(--tg-button-text)] shadow-sm' : 'text-[var(--tg-hint)]'
@@ -94,6 +91,7 @@ export default function ReportsPage() {
             </button>
           </div>
 
+          {/* Period selectors */}
           <div className="space-y-4">
             {type === 'monthly' && (
               <div>
@@ -124,17 +122,31 @@ export default function ReportsPage() {
             </div>
           </div>
 
+          {/* Success state */}
+          {lastSent && (
+            <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-green-500/10 text-green-600">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <p className="text-xs font-medium">
+                Report for <strong>{lastSent}</strong> was sent to your Telegram DM.
+              </p>
+            </div>
+          )}
+
+          {/* Action button */}
           <button
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="w-full mt-6 bg-[var(--tg-button)] text-[var(--tg-button-text)] rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            id="send-report-btn"
+            onClick={handleSend}
+            disabled={isSending}
+            className="w-full mt-5 bg-[var(--tg-button)] text-[var(--tg-button-text)] rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-opacity"
           >
-            {isDownloading ? (
+            {isSending ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Download className="w-5 h-5" />
+              <Send className="w-5 h-5" />
             )}
-            {isDownloading ? 'Generating...' : `Download ${type === 'monthly' ? 'Monthly' : 'Yearly'} Report`}
+            {isSending
+              ? 'Generating & Sending…'
+              : `Send ${type === 'monthly' ? 'Monthly' : 'Yearly'} Report`}
           </button>
         </div>
       </div>

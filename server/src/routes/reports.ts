@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import ExcelJS from 'exceljs';
 import prisma from '../prisma/client';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
+import { bot } from '../bot';
 
 const router = Router();
 router.use(authenticate);
@@ -216,10 +217,19 @@ router.get('/monthly', async (req: AuthRequest, res: Response): Promise<void> =>
 
     // ── Stream response ───────────────────────────────────────────────────────
     const filename = `Turumba_Report_${periodLabel.replace(' ', '_')}.xlsx`;
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    await wb.xlsx.write(res);
-    res.end();
+    const buffer = await wb.xlsx.writeBuffer();
+    
+    if (bot && req.user?.telegramId) {
+      await bot.sendDocument(req.user.telegramId.toString(), Buffer.from(buffer), {
+        caption: `📊 Here is your Monthly Report for ${periodLabel}`
+      }, {
+        filename,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      res.json({ message: 'Monthly report sent via Telegram DM.' });
+    } else {
+      res.status(500).json({ error: 'Bot is not running or telegramId missing.' });
+    }
   } catch (err) {
     console.error('[reports/monthly]', err);
     res.status(500).json({ error: 'Failed to generate monthly report' });
@@ -397,10 +407,19 @@ router.get('/yearly', async (req: AuthRequest, res: Response): Promise<void> => 
     styleCells(s5, team.length);
 
     const filename = `Turumba_Annual_Report_${year}.xlsx`;
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    await wb.xlsx.write(res);
-    res.end();
+    const buffer = await wb.xlsx.writeBuffer();
+
+    if (bot && req.user?.telegramId) {
+      await bot.sendDocument(req.user.telegramId.toString(), Buffer.from(buffer), {
+        caption: `📊 Here is your Yearly Report for ${year}`
+      }, {
+        filename,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      res.json({ message: 'Yearly report sent via Telegram DM.' });
+    } else {
+      res.status(500).json({ error: 'Bot is not running or telegramId missing.' });
+    }
   } catch (err) {
     console.error('[reports/yearly]', err);
     res.status(500).json({ error: 'Failed to generate yearly report' });

@@ -1,6 +1,8 @@
 import TelegramBot from 'node-telegram-bot-api';
 import prisma from './prisma/client';
 
+export let bot: TelegramBot | null = null;
+
 export const startBot = () => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
@@ -8,19 +10,20 @@ export const startBot = () => {
     return;
   }
 
-  const bot = new TelegramBot(token, { polling: true });
+  const instance = new TelegramBot(token, { polling: true });
+  bot = instance;
   const miniAppUrl = process.env.MINI_APP_URL || 'https://your-app.vercel.app';
 
   console.log('🤖 Turumba Bot initialized within server...');
 
-  bot.onText(/\/start/, async (msg) => {
+  instance.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const webAppBtn: TelegramBot.InlineKeyboardButton = {
       text: '🚀 Open Turumba',
       web_app: { url: miniAppUrl },
     };
 
-    await bot.sendMessage(
+    await instance.sendMessage(
       chatId,
       `Welcome to *Turumba*! 📢\n\nYour all-in-one Telegram Ad Management platform. Click below to open the Mini App and manage your campaigns.`,
       {
@@ -32,12 +35,12 @@ export const startBot = () => {
     );
   });
 
-  bot.onText(/\/today/, async (msg) => {
+  instance.onText(/\/today/, async (msg) => {
     const chatId = msg.chat.id;
     try {
       const user = await prisma.user.findUnique({ where: { telegramId: BigInt(msg.from?.id || 0) } });
       if (!user) {
-        await bot.sendMessage(chatId, 'You are not registered in Turumba. Please open the Mini App first.');
+        await instance.sendMessage(chatId, 'You are not registered in Turumba. Please open the Mini App first.');
         return;
       }
 
@@ -56,7 +59,7 @@ export const startBot = () => {
       });
 
       if (ads.length === 0) {
-        await bot.sendMessage(chatId, 'No posts scheduled for today. Relax! ☕');
+        await instance.sendMessage(chatId, 'No posts scheduled for today. Relax! ☕');
         return;
       }
 
@@ -66,19 +69,19 @@ export const startBot = () => {
         text += `⏱ ${time} - *${ad.channel.name}*\n📝 ${ad.title}\n\n`;
       });
 
-      await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+      await instance.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (err) {
       console.error('Error in /today:', err);
-      await bot.sendMessage(chatId, 'Failed to fetch schedule.');
+      await instance.sendMessage(chatId, 'Failed to fetch schedule.');
     }
   });
 
-  bot.onText(/\/mystats/, async (msg) => {
+  instance.onText(/\/mystats/, async (msg) => {
     const chatId = msg.chat.id;
     try {
       const user = await prisma.user.findUnique({ where: { telegramId: BigInt(msg.from?.id || 0) } });
       if (!user) {
-        await bot.sendMessage(chatId, 'You are not registered in Turumba.');
+        await instance.sendMessage(chatId, 'You are not registered in Turumba.');
         return;
       }
 
@@ -98,14 +101,14 @@ export const startBot = () => {
       text += `✅ Ads Posted: ${postedMonth}\n`;
       text += `⏳ Scheduled: ${pending}\n`;
 
-      await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+      await instance.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (err) {
       console.error('Error in /mystats:', err);
-      await bot.sendMessage(chatId, 'Failed to fetch stats.');
+      await instance.sendMessage(chatId, 'Failed to fetch stats.');
     }
   });
 
-  bot.on('polling_error', (error) => {
+  instance.on('polling_error', (error) => {
     console.error('[Bot Polling Error]', error);
   });
 };

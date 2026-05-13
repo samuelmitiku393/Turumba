@@ -120,7 +120,7 @@ export const templatesApi = {
 // ── Reports ───────────────────────────────────────────────────────────────────
 export const reportsApi = {
   monthly: (year: number, month: number) =>
-    api.get('/reports/monthly', { params: { year, month }, responseType: 'blob' }).then(r => r.data),
+    api.get<{ message: string }>('/reports/monthly', { params: { year, month } }).then(r => r.data),
   yearly: (year: number) =>
-    api.get('/reports/yearly', { params: { year }, responseType: 'blob' }).then(r => r.data),
+    api.get<{ message: string }>('/reports/yearly', { params: { year } }).then(r => r.data),
 }
