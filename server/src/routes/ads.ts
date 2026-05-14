@@ -31,39 +31,16 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status, channelId, assignedToId, search, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc' } = req.query as Record<string, string>;
 
-    const where: Record<string, any> = {};
+    const where: Record<string, unknown> = {};
     if (status) where['status'] = status as AdStatus;
     if (channelId) where['channelId'] = channelId;
     if (assignedToId) where['assignedToId'] = assignedToId;
-    
-    // Role-based filtering for POSTER
-    if (req.user?.role === 'POSTER') {
-      where['OR'] = [
-        { createdById: req.user.id },
-        { assignedToId: req.user.id }
-      ];
-    }
-
     if (search) {
-      const searchFilter = {
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { advertiserName: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } },
-        ]
-      };
-      
-      // If we already have an OR for role-filtering, we must wrap both in an AND
-      if (where['OR']) {
-        const roleOr = where['OR'];
-        delete where['OR'];
-        where['AND'] = [
-          { OR: roleOr },
-          searchFilter
-        ];
-      } else {
-        where['OR'] = searchFilter.OR;
-      }
+      where['OR'] = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { advertiserName: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const pageNum = Math.max(1, parseInt(page));
