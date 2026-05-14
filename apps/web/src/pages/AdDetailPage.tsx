@@ -53,7 +53,6 @@ export default function AdDetailPage() {
   if (!ad) return <div className="p-4 text-center mt-10">Ad not found</div>
 
   const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
-  const isPoster = user?.role === 'POSTER'
 
   return (
     <div className="flex flex-col min-h-dvh bg-[var(--tg-secondary)]">
@@ -111,7 +110,7 @@ export default function AdDetailPage() {
             </div>
           </div>
 
-          {ad.revenue && !isPoster && (
+          {ad.revenue && (
             <div className="mt-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20 inline-block">
               <span className="text-xs text-green-600 font-semibold">Revenue: {ad.currency} {Number(ad.revenue).toLocaleString()}</span>
             </div>
