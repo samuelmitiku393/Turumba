@@ -16,7 +16,7 @@ const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales
 
 export default function CalendarPage() {
   const navigate = useNavigate()
-  const [view, setView] = useState<View>(Views.MONTH)
+  const [view, setView] = useState<View>(Views.WEEK)
   const [date, setDate] = useState(new Date())
   const [channelId, setChannelId] = useState('')
 
@@ -71,8 +71,7 @@ export default function CalendarPage() {
             onNavigate={setDate}
             onSelectEvent={(e: any) => navigate(`/ads/${e.id}`)}
             eventPropGetter={eventPropGetter}
-            views={['week', 'day']}
-            defaultView={Views.WEEK}
+            views={['month', 'week', 'day']}
             popup
             selectable
             onSelectSlot={(slotInfo) => navigate(`/ads/new?date=${slotInfo.start.toISOString()}`)}
