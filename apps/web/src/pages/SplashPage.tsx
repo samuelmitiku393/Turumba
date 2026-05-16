@@ -8,7 +8,7 @@ import { useAuthStore } from '../stores/authStore'
 export default function SplashPage() {
   const navigate = useNavigate()
   const { setAuth, isAuthenticated, token, user } = useAuthStore()
-  const [status, setStatus] = useState<'loading' | 'error'>('loading')
+  const [status, setStatus] = useState<'loading' | 'error' | 'pending'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
@@ -36,9 +36,15 @@ export default function SplashPage() {
         const { user, token } = await authApi.login(initData)
         setAuth(user, token)
         navigate('/dashboard', { replace: true })
-      } catch (err: unknown) {
+      } catch (err: any) {
         console.error(err)
-        const msg = err instanceof Error ? err.message : 'Authentication failed'
+        const serverError = err.response?.data?.error
+        if (serverError === 'pending_approval') {
+          setStatus('pending')
+          return
+        }
+        
+        const msg = err.response?.data?.message || err.response?.data?.error || (err instanceof Error ? err.message : 'Authentication failed')
         setErrorMsg(msg)
         setStatus('error')
       }
@@ -105,6 +111,29 @@ export default function SplashPage() {
               className="btn-primary mt-4 w-full"
             >
               Retry
+            </button>
+          </motion.div>
+        )}
+
+        {status === 'pending' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-5 text-center max-w-xs"
+          >
+            <div className="w-12 h-12 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-2xl">⏳</span>
+            </div>
+            <h2 className="text-lg font-bold text-[var(--tg-text)] mb-2">Awaiting Approval</h2>
+            <p className="text-sm text-[var(--tg-hint)] leading-relaxed">
+              Your account has been created and is waiting for an administrator to approve it. 
+              Please check back later.
+            </p>
+            <button
+              onClick={() => { setStatus('loading'); window.location.reload() }}
+              className="btn-secondary mt-5 w-full"
+            >
+              Refresh Status
             </button>
           </motion.div>
         )}

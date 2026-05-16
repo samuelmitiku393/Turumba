@@ -112,4 +112,79 @@ router.patch('/me/notifications', async (req: AuthRequest, res: Response): Promi
   }
 });
 
+// PATCH /api/team/:id/approval (admin only)
+router.patch('/:id/approval', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { action } = req.body as { action: 'approve' | 'reject' };
+    if (action !== 'approve' && action !== 'reject') {
+      res.status(400).json({ error: 'Invalid action' });
+      return;
+    }
+
+    const member = await prisma.user.update({
+      where: { id: req.params['id'] },
+      data: { status: action === 'approve' ? 'ACTIVE' : 'REJECTED' },
+    });
+    
+    await logActivity(req.user!.id, 'approval_changed', undefined, { targetUserId: member.id, newStatus: member.status });
+    res.json({ ...member, telegramId: member.telegramId.toString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update approval status' });
+  }
+});
+
+// DELETE /api/team/:id (admin only, deletes POSTER users)
+router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const targetId = req.params['id'];
+    const member = await prisma.user.findUnique({
+      where: { id: targetId },
+      include: {
+        assignedAds: {
+          where: { status: { in: ['SCHEDULED', 'ACTIVE', 'PENDING_APPROVAL'] } }
+        }
+      }
+    });
+
+    if (!member) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (member.role !== 'POSTER') {
+      res.status(403).json({ error: 'Only POSTER users can be deleted' });
+      return;
+    }
+
+    if (member.assignedAds.length > 0) {
+      res.status(409).json({ error: `Cannot delete user with ${member.assignedAds.length} active/scheduled ads. Reassign or cancel them first.` });
+      return;
+    }
+
+    // Unassign completed/expired/draft ads
+    await prisma.ad.updateMany({
+      where: { assignedToId: targetId },
+      data: { assignedToId: null }
+    });
+
+    // We might also need to handle createdAds or approvedAds by setting them to null or cascading if necessary.
+    // The schema says createdById is required (String, not String?). So we can't null it. 
+    // Actually, let's just let prisma handle it or fail if they created ads? Wait, if they created ads, deleting them will fail because of the foreign key constraint.
+    // But posters generally don't create ads (they are assigned). Let's catch foreign key errors just in case.
+
+    await prisma.user.delete({ where: { id: targetId } });
+    
+    await logActivity(req.user!.id, 'deleted_user', undefined, { targetUserId: targetId, username: member.username });
+    res.json({ message: 'User deleted' });
+  } catch (err: unknown) {
+    console.error(err);
+    if ((err as { code?: string }).code === 'P2003') {
+      res.status(409).json({ error: 'Cannot delete user because they have created ads or other dependent records.' });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 export default router;

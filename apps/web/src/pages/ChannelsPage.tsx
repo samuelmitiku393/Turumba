@@ -15,6 +15,7 @@ const schema = z.object({
   category: z.string().optional(),
   color: z.string().default('#3B82F6'),
   maxPostsPerDay: z.number().default(5),
+  subscriberCount: z.number().int().min(0).default(0),
 })
 
 type FormData = z.infer<typeof schema>
@@ -58,12 +59,13 @@ export default function ChannelsPage() {
     setValue('category', c.category || '')
     setValue('color', c.color)
     setValue('maxPostsPerDay', c.maxPostsPerDay)
+    setValue('subscriberCount', c.subscriberCount)
     setIsModalOpen(true)
   }
 
   const openNew = () => {
     setEditingId(null)
-    reset({ color: '#3B82F6', maxPostsPerDay: 5 })
+    reset({ color: '#3B82F6', maxPostsPerDay: 5, subscriberCount: 0 })
     setIsModalOpen(true)
   }
 
@@ -127,6 +129,7 @@ export default function ChannelsPage() {
                 <div><label className="text-xs text-[var(--tg-hint)]">Category</label><input {...register('category')} className="input" /></div>
                 <div><label className="text-xs text-[var(--tg-hint)]">Max / Day</label><input type="number" {...register('maxPostsPerDay', { valueAsNumber: true })} className="input" /></div>
               </div>
+              <div><label className="text-xs text-[var(--tg-hint)]">Subscribers</label><input type="number" {...register('subscriberCount', { valueAsNumber: true })} className="input" /></div>
               <div>
                 <label className="text-xs text-[var(--tg-hint)]">Color</label>
                 <div className="flex gap-2 mt-1">

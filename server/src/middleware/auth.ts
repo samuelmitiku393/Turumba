@@ -33,6 +33,11 @@ export async function authenticate(
       return;
     }
 
+    if (user.status !== 'ACTIVE') {
+      res.status(403).json({ error: user.status === 'PENDING' ? 'pending_approval' : 'rejected' });
+      return;
+    }
+
     req.user = user;
     next();
   } catch {

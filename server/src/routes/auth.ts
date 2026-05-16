@@ -42,8 +42,9 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         firstName: telegramUser.first_name,
         lastName: telegramUser.last_name,
         avatarUrl: telegramUser.photo_url,
-        // Auto-promote first user to ADMIN if they are the only one
+        // Auto-promote first user to ADMIN and ACTIVE if they are the only one
         role: userCount <= 1 ? 'ADMIN' : undefined,
+        status: userCount <= 1 ? 'ACTIVE' : undefined,
       },
       create: {
         telegramId: BigInt(telegramUser.id),
@@ -52,8 +53,19 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         lastName: telegramUser.last_name,
         avatarUrl: telegramUser.photo_url,
         role: defaultRole,
+        status: defaultRole === 'ADMIN' ? 'ACTIVE' : 'PENDING',
       },
     });
+
+    if (user.status === 'PENDING') {
+      res.status(403).json({ error: 'pending_approval', message: 'Your account is pending approval by an administrator.' });
+      return;
+    }
+
+    if (user.status === 'REJECTED') {
+      res.status(403).json({ error: 'rejected', message: 'Your access to the system has been rejected.' });
+      return;
+    }
 
     const token = jwt.sign(
       { userId: user.id },
@@ -73,6 +85,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         lastName: user.lastName,
         avatarUrl: user.avatarUrl,
         role: user.role,
+        status: user.status,
       },
     });
   } catch (err) {
@@ -101,6 +114,7 @@ router.get('/me', async (req, res: Response): Promise<void> => {
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
       role: user.role,
+      status: user.status,
     });
   } catch {
     res.status(401).json({ error: 'Invalid token' });

@@ -1,5 +1,7 @@
 export type Role = 'ADMIN' | 'MANAGER' | 'POSTER'
 
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'REJECTED'
+
 export type AdStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
@@ -28,6 +30,7 @@ export interface User {
   lastName?: string
   avatarUrl?: string
   role: Role
+  status: UserStatus
   isActive: boolean
   notifyAssign: boolean
   notifyRemind: boolean
