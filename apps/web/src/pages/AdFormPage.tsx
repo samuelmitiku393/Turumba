@@ -19,6 +19,11 @@ const adSchema = z.object({
   assignedToId: z.string().optional(),
   revenue: z.number().optional(),
   mediaUrls: z.array(z.string()).default([]),
+  // Recurrence options
+  isRecurring: z.boolean().optional().default(false),
+  recurrenceDays: z.number().optional().default(7),
+  postsPerDay: z.number().optional().default(1),
+  startDate: z.string().optional(),
 })
 
 type AdFormData = z.infer<typeof adSchema>
@@ -29,6 +34,8 @@ export default function AdFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [uploading, setUploading] = useState(false)
+  const [time1, setTime1] = useState('10:00')
+  const [time2, setTime2] = useState('16:00')
 
   const { data: channels } = useQuery({ queryKey: ['channels'], queryFn: channelsApi.list })
   const { data: team } = useQuery({ queryKey: ['team'], queryFn: teamApi.list })
@@ -41,8 +48,11 @@ export default function AdFormPage() {
 
   const { register, handleSubmit, reset, watch, setValue } = useForm<AdFormData>({
     resolver: zodResolver(adSchema),
-    defaultValues: { durationDays: 1, mediaUrls: [] }
+    defaultValues: { durationDays: 1, mediaUrls: [], isRecurring: false, recurrenceDays: 7, postsPerDay: 1 }
   })
+
+  const isRecurring = watch('isRecurring')
+  const postsPerDay = watch('postsPerDay')
 
   useEffect(() => {
     if (ad) {
@@ -79,10 +89,18 @@ export default function AdFormPage() {
 
   const mut = useMutation({
     mutationFn: (data: AdFormData) => {
+      const times = data.isRecurring
+        ? data.postsPerDay === 2
+          ? [time1, time2]
+          : [time1]
+        : undefined;
+
       const payload = {
         ...data,
-        scheduledAt: data.scheduledAt || undefined,
+        scheduledAt: data.isRecurring ? undefined : (data.scheduledAt || undefined),
+        startDate: data.isRecurring ? (data.startDate || undefined) : undefined,
         assignedToId: data.assignedToId || undefined,
+        recurrenceTimes: times,
       }
       return isEdit ? adsApi.update(id!, payload) : adsApi.create(payload)
     },
@@ -208,19 +226,77 @@ export default function AdFormPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Schedule Time</label>
-              <input type="datetime-local" {...register('scheduledAt')} className="input h-11" />
+          {!isEdit && (
+            <div className="flex items-center gap-2 py-1">
+              <input type="checkbox" {...register('isRecurring')} id="isRecurring" className="w-4 h-4 rounded text-[var(--tg-button)]" />
+              <label htmlFor="isRecurring" className="text-xs font-semibold text-[var(--tg-text)]">
+                🔄 Enable Ad Recurrence (Bulk Schedule)
+              </label>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign To</label>
-              <select {...register('assignedToId')} className="input py-0 h-11">
-                <option value="">Unassigned</option>
-                {team?.map(u => <option key={u.id} value={u.id}>{u.firstName}</option>)}
-              </select>
+          )}
+
+          {isRecurring ? (
+            <div className="space-y-3 p-3 bg-[var(--tg-secondary)] rounded-xl border border-[var(--tg-border)]/50">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Start Date</label>
+                  <input type="date" {...register('startDate')} className="input h-11" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Repeat Days</label>
+                  <input type="number" {...register('recurrenceDays', { valueAsNumber: true })} className="input h-11" min="1" max="365" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Frequency</label>
+                  <select {...register('postsPerDay', { valueAsNumber: true })} className="input py-0 h-11">
+                    <option value="1">1 post / day</option>
+                    <option value="2">2 posts / day</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign To</label>
+                  <select {...register('assignedToId')} className="input py-0 h-11">
+                    <option value="">Unassigned</option>
+                    {team?.map(u => <option key={u.id} value={u.id}>{u.firstName}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {postsPerDay === 2 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Time 1</label>
+                    <input type="time" value={time1} onChange={e => setTime1(e.target.value)} className="input h-11" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Time 2</label>
+                    <input type="time" value={time2} onChange={e => setTime2(e.target.value)} className="input h-11" />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Time</label>
+                  <input type="time" value={time1} onChange={e => setTime1(e.target.value)} className="input h-11" />
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Schedule Time</label>
+                <input type="datetime-local" {...register('scheduledAt')} className="input h-11" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign To</label>
+                <select {...register('assignedToId')} className="input py-0 h-11">
+                  <option value="">Unassigned</option>
+                  {team?.map(u => <option key={u.id} value={u.id}>{u.firstName}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Expected Revenue (ETB)</label>

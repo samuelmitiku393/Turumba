@@ -24,6 +24,10 @@ const adSchema = z.object({
   templateId: z.string().cuid().optional(),
   revenue: z.number().min(0).optional(),
   notes: z.string().max(1000).optional(),
+  isRecurring: z.boolean().optional().default(false),
+  recurrenceDays: z.number().int().min(1).max(365).optional(),
+  postsPerDay: z.number().int().min(1).max(10).optional(),
+  recurrenceTimes: z.array(z.string()).optional(),
 });
 
 // GET /api/ads
@@ -106,21 +110,104 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
     const parsed = adSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() }); return; }
 
-    const data = parsed.data;
-    const expiresAt = data.startDate && data.durationDays
-      ? new Date(new Date(data.startDate).getTime() + data.durationDays * 86400000)
+    const { isRecurring, recurrenceDays, postsPerDay, recurrenceTimes, ...adFields } = parsed.data;
+
+    // Recurrence logic: create multiple recurring posts automatically
+    if (isRecurring && recurrenceDays && recurrenceTimes && recurrenceTimes.length > 0) {
+      const baseStartDate = adFields.startDate
+        ? new Date(adFields.startDate)
+        : adFields.scheduledAt
+        ? new Date(adFields.scheduledAt)
+        : new Date();
+
+      const adsToCreate = [];
+
+      for (let day = 0; day < recurrenceDays; day++) {
+        for (const timeStr of recurrenceTimes) {
+          const [hours, minutes] = timeStr.split(':').map(Number);
+
+          const scheduledAt = new Date(baseStartDate);
+          scheduledAt.setDate(scheduledAt.getDate() + day);
+          scheduledAt.setHours(hours, minutes, 0, 0);
+
+          const expiresAt = new Date(scheduledAt.getTime() + adFields.durationDays * 86400000);
+
+          const titleSuffix = recurrenceDays > 1
+            ? recurrenceTimes.length > 1
+              ? ` #${day + 1} (${timeStr})`
+              : ` #${day + 1}`
+            : recurrenceTimes.length > 1
+            ? ` (${timeStr})`
+            : '';
+
+          adsToCreate.push({
+            title: `${adFields.title}${titleSuffix}`,
+            content: adFields.content,
+            mediaUrls: adFields.mediaUrls ?? [],
+            advertiserName: adFields.advertiserName,
+            advertiserContact: adFields.advertiserContact,
+            advertiserEmail: adFields.advertiserEmail,
+            channelId: adFields.channelId,
+            durationDays: adFields.durationDays,
+            startDate: scheduledAt,
+            scheduledAt,
+            expiresAt,
+            assignedToId: adFields.assignedToId,
+            templateId: adFields.templateId,
+            revenue: adFields.revenue ? adFields.revenue : undefined,
+            currency: 'ETB',
+            notes: adFields.notes,
+            createdById: req.user!.id,
+          });
+        }
+      }
+
+      const createdAds = await prisma.$transaction(
+        adsToCreate.map((adData) =>
+          prisma.ad.create({
+            data: adData,
+            include: {
+              channel: { select: { id: true, name: true, username: true, color: true } },
+              assignedTo: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+              createdBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+          })
+        )
+      );
+
+      for (const ad of createdAds) {
+        await logActivity(req.user!.id, 'created_ad', ad.id, { title: ad.title });
+
+        if (ad.assignedToId && ad.assignedToId !== req.user!.id) {
+          await createNotification({
+            userId: ad.assignedToId,
+            type: 'ASSIGNMENT',
+            title: 'New Ad Assigned',
+            body: `You have been assigned to manage "${ad.title}"`,
+            adId: ad.id,
+          });
+        }
+      }
+
+      res.status(201).json(createdAds[0]);
+      return;
+    }
+
+    // Single ad creation logic
+    const expiresAt = adFields.startDate && adFields.durationDays
+      ? new Date(new Date(adFields.startDate).getTime() + adFields.durationDays * 86400000)
       : undefined;
 
     const ad = await prisma.ad.create({
       data: {
-        ...data,
-        startDate: data.startDate ? new Date(data.startDate) : undefined,
-        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+        ...adFields,
+        startDate: adFields.startDate ? new Date(adFields.startDate) : undefined,
+        scheduledAt: adFields.scheduledAt ? new Date(adFields.scheduledAt) : undefined,
         expiresAt,
         createdById: req.user!.id,
-        revenue: data.revenue ? data.revenue : undefined,
+        revenue: adFields.revenue ? adFields.revenue : undefined,
         currency: 'ETB',
-        mediaUrls: data.mediaUrls ?? [],
+        mediaUrls: adFields.mediaUrls ?? [],
       },
       include: {
         channel: { select: { id: true, name: true, username: true, color: true } },
@@ -131,7 +218,6 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
 
     await logActivity(req.user!.id, 'created_ad', ad.id, { title: ad.title });
 
-    // Notify assigned user if different from creator
     if (ad.assignedToId && ad.assignedToId !== req.user!.id) {
       await createNotification({
         userId: ad.assignedToId,
