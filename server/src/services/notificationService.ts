@@ -46,6 +46,47 @@ export async function createNotification(params: {
           } : {}),
         });
 
+        // If it's a 30-minute reminder, send the raw ad content and media directly in the Telegram DM
+        if (params.type === 'REMINDER' && params.adId) {
+          const ad = await prisma.ad.findUnique({
+            where: { id: params.adId },
+          });
+
+          if (ad) {
+            // Send a decorative spacer to introduce the raw ad assets
+            await bot.sendMessage(
+              user.telegramId.toString(),
+              `👇 <b>Below is the raw Ad Content and Media. You can tap to copy the text and forward the files directly!</b>`,
+              { parse_mode: 'HTML' }
+            );
+
+            // Send the ad copy text exactly as it is (no HTML mode to prevent entity parsing errors, and clean for one-tap copy!)
+            await bot.sendMessage(user.telegramId.toString(), ad.content);
+
+            // Send media files if present
+            if (ad.mediaUrls && ad.mediaUrls.length > 0) {
+              if (ad.mediaUrls.length === 1) {
+                const url = ad.mediaUrls[0];
+                const isVideo = url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('video');
+                if (isVideo) {
+                  await bot.sendVideo(user.telegramId.toString(), url);
+                } else {
+                  await bot.sendPhoto(user.telegramId.toString(), url);
+                }
+              } else {
+                const mediaGroup = ad.mediaUrls.map((url) => {
+                  const isVideo = url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('video');
+                  return {
+                    type: isVideo ? 'video' : 'photo',
+                    media: url,
+                  } as const;
+                });
+                await bot.sendMediaGroup(user.telegramId.toString(), mediaGroup);
+              }
+            }
+          }
+        }
+
         await prisma.notification.update({ where: { id: notif.id }, data: { sentTg: true } });
       } catch (tgErr) {
         console.error('[NotificationService] Telegram send failed:', tgErr);
