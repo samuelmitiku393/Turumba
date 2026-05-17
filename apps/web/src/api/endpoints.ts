@@ -56,7 +56,7 @@ export const scheduleApi = {
   today: () =>
     api.get<Ad[]>('/schedule/today').then(r => r.data),
   conflicts: (params: { channelId: string; scheduledAt: string; excludeAdId?: string }) =>
-    api.get<{ conflicts: Ad[]; hasConflicts: boolean; atDayLimit: boolean }>(
+    api.get<{ conflicts: Ad[]; hasConflicts: boolean }>(
       '/schedule/conflicts', { params }
     ).then(r => r.data),
 }

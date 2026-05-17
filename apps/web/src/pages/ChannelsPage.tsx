@@ -14,7 +14,6 @@ const schema = z.object({
   username: z.string().min(1, 'Required'),
   category: z.string().optional(),
   color: z.string().default('#3B82F6'),
-  maxPostsPerDay: z.number().default(5),
   subscriberCount: z.number().int().min(0).optional().default(0),
 })
 
@@ -58,14 +57,13 @@ export default function ChannelsPage() {
     setValue('username', c.username)
     setValue('category', c.category || '')
     setValue('color', c.color)
-    setValue('maxPostsPerDay', c.maxPostsPerDay)
     setValue('subscriberCount', c.subscriberCount)
     setIsModalOpen(true)
   }
 
   const openNew = () => {
     setEditingId(null)
-    reset({ color: '#3B82F6', maxPostsPerDay: 5, subscriberCount: 0 })
+    reset({ color: '#3B82F6', subscriberCount: 0 })
     setIsModalOpen(true)
   }
 
@@ -111,7 +109,6 @@ export default function ChannelsPage() {
               <div className="flex items-center gap-4 mt-4 pt-3 border-t border-[var(--tg-border)] text-xs text-[var(--tg-hint)]">
                 <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {(c.subscriberCount / 1000).toFixed(1)}k subs</div>
                 <div className="flex items-center gap-1">Ads: {c._count?.ads || 0}</div>
-                <div className="flex items-center gap-1">Max: {c.maxPostsPerDay}/day</div>
               </div>
             </div>
           ))
@@ -130,10 +127,7 @@ export default function ChannelsPage() {
                 </>
               )}
               <div><label className="text-xs text-[var(--tg-hint)]">Username (@)</label><input {...register('username')} className="input" placeholder="@channel_username" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-[var(--tg-hint)]">Category</label><input {...register('category')} className="input" /></div>
-                <div><label className="text-xs text-[var(--tg-hint)]">Max / Day</label><input type="number" {...register('maxPostsPerDay', { valueAsNumber: true })} className="input" /></div>
-              </div>
+              <div><label className="text-xs text-[var(--tg-hint)]">Category</label><input {...register('category')} className="input" /></div>
 
               <div>
                 <label className="text-xs text-[var(--tg-hint)]">Color</label>

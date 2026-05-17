@@ -15,7 +15,6 @@ const channelSchema = z.object({
   description: z.string().max(500).optional(),
   subscriberCount: z.number().int().min(0).optional().default(0),
   isActive: z.boolean().optional().default(true),
-  maxPostsPerDay: z.number().int().min(1).max(50).optional().default(5),
   preferredSlots: z.array(z.string().regex(/^\d{2}:\d{2}$/)).optional().default([]),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().default('#3B82F6'),
 });

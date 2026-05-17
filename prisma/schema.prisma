@@ -37,7 +37,6 @@ model Channel {
   description     String?
   subscriberCount Int      @default(0)
   isActive        Boolean  @default(true)
-  maxPostsPerDay  Int      @default(5)
   preferredSlots  String[]
   color           String   @default("#3B82F6")
   createdAt       DateTime @default(now())

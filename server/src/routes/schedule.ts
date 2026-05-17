@@ -60,16 +60,9 @@ router.get('/conflicts', async (req: AuthRequest, res: Response): Promise<void> 
       select: { id: true, title: true, scheduledAt: true, status: true },
     });
 
-    // Also check max posts per day limit
-    const channel = await prisma.channel.findUnique({
-      where: { id: channelId },
-      select: { maxPostsPerDay: true },
-    });
-
     res.json({
       conflicts,
       hasConflicts: conflicts.length > 0,
-      atDayLimit: channel ? conflicts.length >= channel.maxPostsPerDay : false,
     });
   } catch (err) {
     console.error(err);

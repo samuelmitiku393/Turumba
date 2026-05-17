@@ -44,7 +44,6 @@ export interface Channel {
   description?: string
   subscriberCount: number
   isActive: boolean
-  maxPostsPerDay: number
   preferredSlots: string[]
   color: string
   createdAt: string
