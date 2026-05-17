@@ -61,11 +61,10 @@ async function sendUpcomingReminders(): Promise<void> {
   try {
     const now = new Date();
     const in30 = new Date(now.getTime() + 30 * 60 * 1000);
-    const in36 = new Date(now.getTime() + 36 * 60 * 1000); // 6-min window
 
     const ads = await prisma.ad.findMany({
       where: {
-        scheduledAt: { gte: in30, lt: in36 },
+        scheduledAt: { gte: now, lte: in30 },
         status: 'SCHEDULED',
         assignedToId: { not: null },
       },
@@ -78,9 +77,13 @@ async function sendUpcomingReminders(): Promise<void> {
     for (const ad of ads) {
       if (!ad.assignedTo) continue;
 
-      // Check if reminder was already sent
+      // Check if a reminder was already sent since the last ad update/reschedule
       const existing = await prisma.notification.findFirst({
-        where: { adId: ad.id, type: 'REMINDER' }
+        where: {
+          adId: ad.id,
+          type: 'REMINDER',
+          createdAt: { gte: ad.updatedAt },
+        },
       });
       if (existing) continue;
 
