@@ -28,6 +28,7 @@ const adSchema = z.object({
   recurrenceDays: z.number().int().min(1).max(365).optional(),
   postsPerDay: z.number().int().min(1).max(10).optional(),
   recurrenceTimes: z.array(z.string()).optional(),
+  status: z.nativeEnum(AdStatus).optional(),
 });
 
 // GET /api/ads
@@ -158,6 +159,9 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
             currency: 'ETB',
             notes: adFields.notes,
             createdById: req.user!.id,
+            status: adFields.status || 'DRAFT',
+            approvedById: adFields.status === 'SCHEDULED' ? req.user!.id : undefined,
+            approvedAt: adFields.status === 'SCHEDULED' ? new Date() : undefined,
           });
         }
       }
@@ -208,6 +212,9 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
         revenue: adFields.revenue ? adFields.revenue : undefined,
         currency: 'ETB',
         mediaUrls: adFields.mediaUrls ?? [],
+        status: adFields.status || 'DRAFT',
+        approvedById: adFields.status === 'SCHEDULED' ? req.user!.id : undefined,
+        approvedAt: adFields.status === 'SCHEDULED' ? new Date() : undefined,
       },
       include: {
         channel: { select: { id: true, name: true, username: true, color: true } },

@@ -8,6 +8,8 @@ import { ChevronLeft, Save, Loader2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adsApi, channelsApi, teamApi, uploadApi, templatesApi } from '../api/endpoints'
 import { format } from 'date-fns'
+import { useAuthStore } from '../stores/authStore'
+import { clsx } from 'clsx'
 
 const adSchema = z.object({
   title: z.string().min(1, 'Required'),
@@ -36,6 +38,8 @@ export default function AdFormPage() {
   const [uploading, setUploading] = useState(false)
   const [time1, setTime1] = useState('10:00')
   const [time2, setTime2] = useState('16:00')
+  const user = useAuthStore(s => s.user)
+  const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
 
   const { data: channels } = useQuery({ queryKey: ['channels'], queryFn: channelsApi.list })
   const { data: team } = useQuery({ queryKey: ['team'], queryFn: teamApi.list })
@@ -88,7 +92,7 @@ export default function AdFormPage() {
   }
 
   const mut = useMutation({
-    mutationFn: (data: AdFormData) => {
+    mutationFn: ({ data, status }: { data: AdFormData; status?: string }) => {
       const times = data.isRecurring
         ? data.postsPerDay === 2
           ? [time1, time2]
@@ -101,6 +105,7 @@ export default function AdFormPage() {
         startDate: data.isRecurring ? (data.startDate || undefined) : undefined,
         assignedToId: data.assignedToId || undefined,
         recurrenceTimes: times,
+        status,
       }
       return isEdit ? adsApi.update(id!, payload) : adsApi.create(payload)
     },
@@ -306,10 +311,24 @@ export default function AdFormPage() {
 
         {/* Bottom Actions */}
         <div className="flex flex-col gap-3 pt-4">
+          {isManager && !isEdit && (
+            <button
+              onClick={handleSubmit(d => mut.mutate({ data: d, status: 'SCHEDULED' }))}
+              disabled={mut.isPending || uploading}
+              className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 bg-green-600 border border-green-700 text-white shadow-md active:scale-95 transition-all"
+            >
+              {mut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Create & Approve (Schedule)
+            </button>
+          )}
+
           <button
-            onClick={handleSubmit(d => mut.mutate(d))}
+            onClick={handleSubmit(d => mut.mutate({ data: d, status: isEdit ? undefined : 'DRAFT' }))}
             disabled={mut.isPending || uploading}
-            className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2"
+            className={clsx(
+              "w-full py-3.5 text-base flex items-center justify-center gap-2 font-semibold active:scale-95 transition-all",
+              isManager && !isEdit ? "btn-secondary border-[var(--tg-border)] text-[var(--tg-text)]" : "btn-primary text-[var(--tg-button-text)]"
+            )}
           >
             {mut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {isEdit ? 'Save Changes' : 'Create & Save as Draft'}
@@ -317,18 +336,9 @@ export default function AdFormPage() {
           
           {!isEdit && (
              <button
-                onClick={handleSubmit(d => {
-                  mut.mutate(d, {
-                    onSuccess: (newAd) => {
-                       adsApi.updateStatus(newAd.id, 'PENDING_APPROVAL').then(() => {
-                         toast.success('Ad created and submitted for approval')
-                         navigate(-1)
-                       })
-                    }
-                  })
-                })}
+                onClick={handleSubmit(d => mut.mutate({ data: d, status: 'PENDING_APPROVAL' }))}
                 disabled={mut.isPending || uploading}
-                className="btn-secondary w-full py-3 text-sm flex items-center justify-center gap-2 border-[var(--tg-button)] text-[var(--tg-button)]"
+                className="btn-secondary w-full py-3.5 text-sm flex items-center justify-center gap-2 border-[var(--tg-button)] text-[var(--tg-button)] font-semibold active:scale-95 transition-all"
              >
                 Create & Submit for Approval
              </button>
