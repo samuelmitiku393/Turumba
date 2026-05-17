@@ -44,19 +44,29 @@ export default function AdsPage() {
 
   const isBulkMode = isManager && (selectMode || status === 'PENDING_APPROVAL')
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
+  const handleToggleSelect = (ad: any) => {
+    if (ad.isBulkParent && ad.ads) {
+      const childIds = ad.ads.map((c: any) => c.id)
+      const allSelected = childIds.every((id: string) => selectedIds.includes(id))
+      if (allSelected) {
+        setSelectedIds(prev => prev.filter(id => !childIds.includes(id)))
+      } else {
+        setSelectedIds(prev => Array.from(new Set([...prev, ...childIds])))
+      }
+    } else {
+      setSelectedIds(prev =>
+        prev.includes(ad.id) ? prev.filter(x => x !== ad.id) : [...prev, ad.id]
+      )
+    }
   }
 
   const handleSelectAll = () => {
     if (!data?.ads) return
-    const ids = data.ads.map(ad => ad.id)
-    if (selectedIds.length === ids.length) {
+    const allIds = data.ads.flatMap(ad => ad.isBulkParent && ad.ads ? ad.ads.map(c => c.id) : [ad.id])
+    if (selectedIds.length === allIds.length) {
       setSelectedIds([])
     } else {
-      setSelectedIds(ids)
+      setSelectedIds(allIds)
     }
   }
 
@@ -177,29 +187,35 @@ export default function AdsPage() {
             'gap-3',
             view === 'grid' ? 'grid grid-cols-2' : 'flex flex-col'
           )}>
-            {data.ads.map(ad => (
-              <div key={ad.id} className="flex items-center gap-3 w-full">
-                {isBulkMode && (
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(ad.id)}
-                    onChange={() => handleToggleSelect(ad.id)}
-                    className="w-5 h-5 rounded border-[var(--tg-border)] accent-[var(--tg-button)] shrink-0 cursor-pointer"
-                  />
-                )}
-                <div
-                  className="flex-1 min-w-0"
-                  onClickCapture={(e) => {
-                    if (isBulkMode) {
-                      e.stopPropagation();
-                      handleToggleSelect(ad.id);
-                    }
-                  }}
-                >
-                  <AdCard ad={ad} view={view} />
+            {data.ads.map(ad => {
+              const isSelected = ad.isBulkParent && ad.ads
+                ? ad.ads.every(c => selectedIds.includes(c.id))
+                : selectedIds.includes(ad.id)
+
+              return (
+                <div key={ad.id} className="flex items-center gap-3 w-full">
+                  {isBulkMode && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelect(ad)}
+                      className="w-5 h-5 rounded border-[var(--tg-border)] accent-[var(--tg-button)] shrink-0 cursor-pointer"
+                    />
+                  )}
+                  <div
+                    className="flex-1 min-w-0"
+                    onClickCapture={(e) => {
+                      if (isBulkMode) {
+                        e.stopPropagation();
+                        handleToggleSelect(ad);
+                      }
+                    }}
+                  >
+                    <AdCard ad={ad} view={view} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div className="py-12 text-center flex flex-col items-center">
