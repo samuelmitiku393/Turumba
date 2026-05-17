@@ -2,8 +2,8 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
 
 const api = axios.create({
-  baseURL: 'https://turumba.onrender.com/api',
-  timeout: 15000,
+  baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://turumba.onrender.com/api'),
+  timeout: 60000, // Render free tier cold start can take up to 50 seconds
 })
 
 // Attach JWT token on every request
