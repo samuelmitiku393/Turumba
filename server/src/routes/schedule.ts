@@ -12,7 +12,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 
     const where: Record<string, unknown> = {
       scheduledAt: { not: null },
-      status: { in: ['SCHEDULED', 'POSTED', 'ACTIVE'] },
+      status: { in: ['SCHEDULED', 'ACTIVE'] },
     };
     if (start || end) {
       where['scheduledAt'] = {
@@ -54,7 +54,7 @@ router.get('/conflicts', async (req: AuthRequest, res: Response): Promise<void> 
       where: {
         channelId,
         scheduledAt: { gte: dayStart, lte: dayEnd },
-        status: { in: ['SCHEDULED', 'POSTED', 'ACTIVE'] },
+        status: { in: ['SCHEDULED', 'ACTIVE'] },
         ...(excludeAdId ? { id: { not: excludeAdId } } : {}),
       },
       select: { id: true, title: true, scheduledAt: true, status: true },

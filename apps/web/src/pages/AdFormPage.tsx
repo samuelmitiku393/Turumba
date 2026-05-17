@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Save, Loader2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { adsApi, channelsApi, teamApi, uploadApi } from '../api/endpoints'
+import { adsApi, channelsApi, teamApi, uploadApi, templatesApi } from '../api/endpoints'
 import { format } from 'date-fns'
 
 const adSchema = z.object({
@@ -32,6 +32,7 @@ export default function AdFormPage() {
 
   const { data: channels } = useQuery({ queryKey: ['channels'], queryFn: channelsApi.list })
   const { data: team } = useQuery({ queryKey: ['team'], queryFn: teamApi.list })
+  const { data: templates } = useQuery({ queryKey: ['templates'], queryFn: templatesApi.list })
   const { data: ad, isLoading: adLoading } = useQuery({
     queryKey: ['ad', id],
     queryFn: () => adsApi.get(id!),
@@ -98,6 +99,23 @@ export default function AdFormPage() {
     }
   })
 
+  const saveTemplateMut = useMutation({
+    mutationFn: (data: AdFormData) => templatesApi.create({
+      name: data.title || 'Untitled Template',
+      content: data.content,
+      mediaUrls: data.mediaUrls,
+      advertiserName: data.advertiserName,
+      defaultDuration: data.durationDays,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      toast.success('Template saved successfully!')
+    },
+    onError: () => {
+      toast.error('Failed to save template')
+    }
+  })
+
   if (isEdit && adLoading) return <div className="p-4 text-center mt-10">Loading...</div>
 
   return (
@@ -118,6 +136,29 @@ export default function AdFormPage() {
 
       <div className="flex-1 overflow-y-auto pb-20 p-4 space-y-4">
         <div className="card p-4 space-y-4">
+          {!isEdit && (
+            <div>
+              <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Load from Template</label>
+              <select
+                onChange={(e) => {
+                  const t = templates?.find(x => x.id === e.target.value)
+                  if (t) {
+                    setValue('title', t.name)
+                    setValue('content', t.content)
+                    setValue('mediaUrls', t.mediaUrls || [])
+                    if (t.advertiserName) setValue('advertiserName', t.advertiserName)
+                    setValue('durationDays', t.defaultDuration || 7)
+                    toast.success('Template loaded!')
+                  }
+                }}
+                className="input py-0 h-11"
+              >
+                <option value="">-- Choose a Template --</option>
+                {templates?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Ad Title</label>
             <input {...register('title')} className="input" placeholder="Summer Promo" />
@@ -216,6 +257,16 @@ export default function AdFormPage() {
                 Create & Submit for Approval
              </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleSubmit(d => saveTemplateMut.mutate(d))}
+            disabled={saveTemplateMut.isPending || uploading}
+            className="btn-secondary w-full py-3 text-sm flex items-center justify-center gap-2 border-indigo-500 text-indigo-500 hover:bg-indigo-50/10 active:scale-95 transition-all"
+          >
+            {saveTemplateMut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+            💾 Save Current Form as Template
+          </button>
         </div>
       </div>
     </div>

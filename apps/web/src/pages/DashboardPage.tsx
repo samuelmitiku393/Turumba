@@ -178,9 +178,13 @@ export default function DashboardPage() {
           ) : upcoming?.length ? (
             upcoming.slice(0, 5).map(ad => <UpcomingItem key={ad.id} ad={ad} />)
           ) : (
-            <div className="py-8 text-center">
-              <p className="text-3xl mb-2">📅</p>
-              <p className="text-sm text-[var(--tg-hint)]">No posts in the next 7 days</p>
+            <div className="py-8 text-center flex flex-col items-center justify-center p-6">
+              <Calendar className="w-12 h-12 text-[var(--tg-hint)]/40 mb-3 animate-pulse" />
+              <p className="text-sm font-semibold text-[var(--tg-text)]">All Caught Up!</p>
+              <p className="text-xs text-[var(--tg-hint)] mt-1">No posts scheduled in the next 7 days.</p>
+              <button onClick={() => navigate('/ads/new')} className="mt-4 px-4 py-1.5 bg-[var(--tg-button)] text-[var(--tg-button-text)] text-xs font-bold rounded-xl active:scale-95 transition-transform shadow-md">
+                Schedule an Ad
+              </button>
             </div>
           )}
         </div>
@@ -200,9 +204,10 @@ export default function DashboardPage() {
           ) : activity?.length ? (
             activity.slice(0, 8).map(log => <ActivityItem key={log.id} log={log} />)
           ) : (
-            <div className="py-8 text-center">
-              <p className="text-3xl mb-2">🎯</p>
-              <p className="text-sm text-[var(--tg-hint)]">No activity yet</p>
+            <div className="py-8 text-center flex flex-col items-center justify-center p-6">
+              <BarChart2 className="w-12 h-12 text-[var(--tg-hint)]/40 mb-3" />
+              <p className="text-sm font-semibold text-[var(--tg-text)]">No Activity Yet</p>
+              <p className="text-xs text-[var(--tg-hint)] mt-1">Your team's activity logs will appear here.</p>
             </div>
           )}
         </div>

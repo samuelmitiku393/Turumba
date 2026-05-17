@@ -29,6 +29,8 @@ export const adsApi = {
     api.delete(`/ads/${id}`).then(r => r.data),
   sendMessage: (id: string, content: string) =>
     api.post(`/ads/${id}/chat`, { content }).then(r => r.data),
+  bulkApprove: (adIds: string[]) =>
+    api.post<{ message: string; count: number }>('/ads/bulk-approve', { adIds }).then(r => r.data),
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────────
@@ -119,6 +121,8 @@ export const uploadApi = {
 // ── Templates ─────────────────────────────────────────────────────────────────
 export const templatesApi = {
   list: () => api.get<Template[]>('/templates').then(r => r.data),
+  create: (data: Partial<Template>) => api.post<Template>('/templates', data).then(r => r.data),
+  delete: (id: string) => api.delete<{ message: string }>(`/templates/${id}`).then(r => r.data),
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

@@ -221,7 +221,7 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response): Promise<voi
     }
 
     const updateData: Record<string, unknown> = { status, rejectionReason: rejectionReason ?? null };
-    if (status === 'POSTED') updateData['postedAt'] = new Date();
+    if (status === 'ACTIVE') updateData['postedAt'] = new Date();
     if (status === 'SCHEDULED' || status === 'PENDING_APPROVAL') {
       updateData['approvedById'] = req.user!.id;
       updateData['approvedAt'] = new Date();
@@ -266,6 +266,27 @@ router.post('/:id/chat', async (req: AuthRequest, res: Response): Promise<void> 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
+// POST /api/ads/bulk-approve
+router.post('/bulk-approve', requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { adIds } = req.body as { adIds: string[] };
+    if (!Array.isArray(adIds) || adIds.length === 0) {
+      res.status(400).json({ error: 'adIds array is required' }); return;
+    }
+
+    const updated = await prisma.ad.updateMany({
+      where: { id: { in: adIds }, status: 'PENDING_APPROVAL' },
+      data: { status: 'SCHEDULED', approvedById: req.user!.id, approvedAt: new Date() },
+    });
+
+    await logActivity(req.user!.id, 'bulk_approved', undefined, { count: updated.count, adIds });
+    res.json({ message: 'Bulk approval successful', count: updated.count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to bulk approve' });
   }
 });
 

@@ -165,14 +165,14 @@ export default function AdDetailPage() {
                 }} className="btn-danger">Reject</button>
               </>
             )}
-            {ad.status === 'SCHEDULED' && (
-              <button onClick={() => statusMut.mutate({ status: 'POSTED' })} className="btn-primary bg-indigo-500 text-white">
-                Mark as Posted
+            {ad.status === 'SCHEDULED' && isManager && (
+              <button onClick={() => statusMut.mutate({ status: 'ACTIVE' })} className="btn-primary bg-green-500 text-white">
+                Set Active
               </button>
             )}
-            {ad.status === 'POSTED' && isManager && (
-              <button onClick={() => statusMut.mutate({ status: 'ACTIVE' })} className="btn-primary bg-green-500 text-white">
-                Verify Active
+            {ad.status === 'ACTIVE' && isManager && (
+              <button onClick={() => statusMut.mutate({ status: 'EXPIRED' })} className="btn-secondary">
+                Mark Expired
               </button>
             )}
           </div>

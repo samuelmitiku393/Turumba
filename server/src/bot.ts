@@ -90,7 +90,7 @@ export const startBot = () => {
 
       const [postedMonth, pending] = await Promise.all([
         prisma.ad.count({
-          where: { assignedToId: user.id, postedAt: { gte: monthStart }, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
+          where: { assignedToId: user.id, postedAt: { gte: monthStart }, status: { in: ['ACTIVE', 'EXPIRED'] } },
         }),
         prisma.ad.count({
           where: { assignedToId: user.id, status: 'SCHEDULED' },

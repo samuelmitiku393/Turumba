@@ -38,10 +38,10 @@ router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void>
       }),
       prisma.channel.count(),
       prisma.channel.count({ where: { isActive: true } }),
-      prisma.ad.aggregate({ _sum: { revenue: true }, where: { status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } } }),
+      prisma.ad.aggregate({ _sum: { revenue: true }, where: { status: { in: ['ACTIVE', 'EXPIRED'] } } }),
       prisma.ad.aggregate({
         _sum: { revenue: true },
-        where: { createdAt: { gte: monthStart }, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
+        where: { createdAt: { gte: monthStart }, status: { in: ['ACTIVE', 'EXPIRED'] } },
       }),
     ]);
 
@@ -69,7 +69,7 @@ router.get('/revenue', async (_req: AuthRequest, res: Response): Promise<void> =
       by: ['advertiserName'],
       _sum: { revenue: true },
       _count: { id: true },
-      where: { status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] }, revenue: { not: null } },
+      where: { status: { in: ['ACTIVE', 'EXPIRED'] }, revenue: { not: null } },
       orderBy: { _sum: { revenue: 'desc' } },
       take: 10,
     });
@@ -92,7 +92,7 @@ router.get('/channels', async (_req: AuthRequest, res: Response): Promise<void> 
       include: {
         _count: { select: { ads: true } },
         ads: {
-          where: { status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
+          where: { status: { in: ['ACTIVE', 'EXPIRED'] } },
           select: { revenue: true },
         },
       },

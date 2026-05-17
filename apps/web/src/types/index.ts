@@ -6,7 +6,6 @@ export type AdStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
   | 'SCHEDULED'
-  | 'POSTED'
   | 'ACTIVE'
   | 'EXPIRED'
   | 'CANCELLED'
@@ -32,10 +31,7 @@ export interface User {
   role: Role
   status: UserStatus
   isActive: boolean
-  notifyAssign: boolean
-  notifyRemind: boolean
-  notifyExpiry: boolean
-  notifyDigest: boolean
+  notificationsEnabled: boolean
   createdAt: string
   _count?: { assignedAds: number; createdAds: number }
 }

@@ -5,7 +5,6 @@ const CONFIG: Record<AdStatus, { label: string; className: string }> = {
   DRAFT:            { label: 'Draft',           className: 'badge-draft' },
   PENDING_APPROVAL: { label: 'Pending Approval', className: 'badge-pending' },
   SCHEDULED:        { label: 'Scheduled',        className: 'badge-scheduled' },
-  POSTED:           { label: 'Posted',           className: 'badge-posted' },
   ACTIVE:           { label: 'Active',           className: 'badge-active' },
   EXPIRED:          { label: 'Expired',          className: 'badge-expired' },
   CANCELLED:        { label: 'Cancelled',        className: 'badge-cancelled' },

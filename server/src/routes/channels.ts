@@ -3,12 +3,13 @@ import { z } from 'zod';
 import prisma from '../prisma/client';
 import { authenticate, requireManager, AuthRequest } from '../middleware/auth';
 import { logActivity } from '../services/activityService';
+import { bot } from '../bot';
 
 const router = Router();
 router.use(authenticate);
 
 const channelSchema = z.object({
-  name: z.string().min(1).max(200),
+  name: z.string().max(200).optional().default('Unnamed Channel'),
   username: z.string().min(1).max(100).regex(/^@?[a-zA-Z0-9_]+$/).transform(u => u.startsWith('@') ? u : `@${u}`),
   category: z.string().max(100).optional(),
   description: z.string().max(500).optional(),
@@ -63,7 +64,19 @@ router.post('/', requireManager, async (req: AuthRequest, res: Response): Promis
     const parsed = channelSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() }); return; }
 
-    const channel = await prisma.channel.create({ data: parsed.data });
+    const data = { ...parsed.data };
+
+    if (bot) {
+      try {
+        const chat = await bot.getChat(data.username);
+        if (chat.title) data.name = chat.title;
+        data.subscriberCount = await bot.getChatMemberCount(data.username);
+      } catch (botErr) {
+        console.warn('Bot failed to fetch channel info:', botErr);
+      }
+    }
+
+    const channel = await prisma.channel.create({ data });
     await logActivity(req.user!.id, 'created_channel', undefined, { channelId: channel.id, name: channel.name });
     res.status(201).json(channel);
   } catch (err: unknown) {

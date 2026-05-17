@@ -94,10 +94,7 @@ router.patch('/:id/status', requireAdmin, async (req: AuthRequest, res: Response
 router.patch('/me/notifications', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const schema = z.object({
-      notifyAssign: z.boolean().optional(),
-      notifyRemind: z.boolean().optional(),
-      notifyExpiry: z.boolean().optional(),
-      notifyDigest: z.boolean().optional(),
+      notificationsEnabled: z.boolean().optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: 'Invalid data' }); return; }

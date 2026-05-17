@@ -10,12 +10,12 @@ import { useAuthStore } from '../stores/authStore'
 import { ChannelCardSkeleton } from '../components/Skeletons'
 
 const schema = z.object({
-  name: z.string().min(1, 'Required'),
+  name: z.string().optional(),
   username: z.string().min(1, 'Required'),
   category: z.string().optional(),
   color: z.string().default('#3B82F6'),
   maxPostsPerDay: z.number().default(5),
-  subscriberCount: z.number().int().min(0).default(0),
+  subscriberCount: z.number().int().min(0).optional().default(0),
 })
 
 type FormData = z.infer<typeof schema>
@@ -123,13 +123,18 @@ export default function ChannelsPage() {
           <div className="bg-[var(--tg-bg)] w-full max-w-sm rounded-2xl p-5 animate-slide-up">
             <h2 className="text-lg font-bold mb-4">{editingId ? 'Edit Channel' : 'New Channel'}</h2>
             <form onSubmit={handleSubmit(d => mut.mutate(d))} className="space-y-3">
-              <div><label className="text-xs text-[var(--tg-hint)]">Name</label><input {...register('name')} className="input" /></div>
-              <div><label className="text-xs text-[var(--tg-hint)]">Username (@)</label><input {...register('username')} className="input" /></div>
+              {editingId && (
+                <>
+                  <div><label className="text-xs text-[var(--tg-hint)]">Name (Edit)</label><input {...register('name')} className="input" /></div>
+                  <div><label className="text-xs text-[var(--tg-hint)]">Subscribers (Edit)</label><input type="number" {...register('subscriberCount', { valueAsNumber: true })} className="input" /></div>
+                </>
+              )}
+              <div><label className="text-xs text-[var(--tg-hint)]">Username (@)</label><input {...register('username')} className="input" placeholder="@channel_username" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-xs text-[var(--tg-hint)]">Category</label><input {...register('category')} className="input" /></div>
                 <div><label className="text-xs text-[var(--tg-hint)]">Max / Day</label><input type="number" {...register('maxPostsPerDay', { valueAsNumber: true })} className="input" /></div>
               </div>
-              <div><label className="text-xs text-[var(--tg-hint)]">Subscribers</label><input type="number" {...register('subscriberCount', { valueAsNumber: true })} className="input" /></div>
+
               <div>
                 <label className="text-xs text-[var(--tg-hint)]">Color</label>
                 <div className="flex gap-2 mt-1">

@@ -90,35 +90,12 @@ export default function SettingsPage() {
         {tab === 'notifications' && (
           <div className="card divide-y divide-[var(--tg-border)]">
             <ToggleRow
-              label="New Assignments"
-              description="When you are assigned to a new ad"
-              checked={!!user?.notifyAssign}
-              onChange={() => toggleNotif('notifyAssign')}
+              label="Bot Notifications"
+              description="Get updates on ad assignments, schedule reminders and expiries via Telegram"
+              checked={!!user?.notificationsEnabled}
+              onChange={() => toggleNotif('notificationsEnabled')}
               disabled={notifMut.isPending}
             />
-            <ToggleRow
-              label="Posting Reminders"
-              description="30 minutes before your scheduled posts"
-              checked={!!user?.notifyRemind}
-              onChange={() => toggleNotif('notifyRemind')}
-              disabled={notifMut.isPending}
-            />
-            <ToggleRow
-              label="Expiry Warnings"
-              description="24 hours before your active ads expire"
-              checked={!!user?.notifyExpiry}
-              onChange={() => toggleNotif('notifyExpiry')}
-              disabled={notifMut.isPending}
-            />
-            {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
-              <ToggleRow
-                label="Daily Admin Digest"
-                description="Daily 8 AM summary of schedule and approvals"
-                checked={!!user?.notifyDigest}
-                onChange={() => toggleNotif('notifyDigest')}
-                disabled={notifMut.isPending}
-              />
-            )}
           </div>
         )}
       </div>

@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Filter, LayoutGrid, LayoutList } from 'lucide-react'
 import { adsApi, channelsApi } from '../api/endpoints'
 import { ListSkeleton } from '../components/Skeletons'
 import AdCard from '../components/AdCard'
 import type { AdStatus } from '../types'
 import { clsx } from 'clsx'
+import { useAuthStore } from '../stores/authStore'
+import toast from 'react-hot-toast'
 
 const STATUSES: { value: AdStatus | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -13,16 +15,20 @@ const STATUSES: { value: AdStatus | ''; label: string }[] = [
   { value: 'SCHEDULED', label: 'Scheduled' },
   { value: 'PENDING_APPROVAL', label: 'Pending' },
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'POSTED', label: 'Posted' },
   { value: 'EXPIRED', label: 'Expired' },
 ]
 
 export default function AdsPage() {
+  const queryClient = useQueryClient()
+  const user = useAuthStore(s => s.user)
+  const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<AdStatus | ''>('')
   const [channelId, setChannelId] = useState('')
   const [view, setView] = useState<'list' | 'grid'>('list')
   const [page, setPage] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const { data: channels } = useQuery({
     queryKey: ['channels'],
@@ -35,8 +41,38 @@ export default function AdsPage() {
     placeholderData: (prev) => prev,
   })
 
+  const isBulkMode = isManager && status === 'PENDING_APPROVAL'
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleSelectAll = () => {
+    if (!data?.ads) return
+    const pendingIds = data.ads.map(ad => ad.id)
+    if (selectedIds.length === pendingIds.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(pendingIds)
+    }
+  }
+
+  const bulkApproveMut = useMutation({
+    mutationFn: adsApi.bulkApprove,
+    onSuccess: (res) => {
+      toast.success(res.message || `Successfully approved ${res.count} ads!`)
+      setSelectedIds([])
+      queryClient.invalidateQueries({ queryKey: ['ads'] })
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to approve ads')
+    }
+  })
+
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div className="min-h-dvh flex flex-col pb-20">
       {/* Header & Filters (Sticky) */}
       <div className="sticky top-0 z-10 bg-[var(--tg-secondary)]/80 backdrop-blur-md px-4 pt-4 pb-3 space-y-3 border-b border-[var(--tg-border)]">
         <div className="flex items-center justify-between">
@@ -73,7 +109,10 @@ export default function AdsPage() {
         <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value as AdStatus | '')}
+            onChange={(e) => {
+              setStatus(e.target.value as AdStatus | '')
+              setSelectedIds([]) // Reset selected IDs when status changes
+            }}
             className="input h-9 py-0 text-xs shrink-0 w-auto rounded-full bg-[var(--tg-bg)] px-3 pr-8"
           >
             {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -87,6 +126,15 @@ export default function AdsPage() {
             <option value="">All Channels</option>
             {channels?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+
+          {isBulkMode && data?.ads && data.ads.length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              className="text-xs font-semibold px-3 py-1 bg-[var(--tg-button)]/10 text-[var(--tg-button)] rounded-full shrink-0 active:scale-95 transition-transform"
+            >
+              {selectedIds.length === data.ads.length ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -100,7 +148,27 @@ export default function AdsPage() {
             view === 'grid' ? 'grid grid-cols-2' : 'flex flex-col'
           )}>
             {data.ads.map(ad => (
-              <AdCard key={ad.id} ad={ad} view={view} />
+              <div key={ad.id} className="flex items-center gap-3 w-full">
+                {isBulkMode && (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(ad.id)}
+                    onChange={() => handleToggleSelect(ad.id)}
+                    className="w-5 h-5 rounded border-[var(--tg-border)] accent-[var(--tg-button)] shrink-0 cursor-pointer"
+                  />
+                )}
+                <div
+                  className="flex-1 min-w-0"
+                  onClickCapture={(e) => {
+                    if (isBulkMode) {
+                      e.stopPropagation();
+                      handleToggleSelect(ad.id);
+                    }
+                  }}
+                >
+                  <AdCard ad={ad} view={view} />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -136,6 +204,22 @@ export default function AdsPage() {
           </div>
         )}
       </div>
+
+      {/* Floating Action Bar for Bulk Approval */}
+      {isBulkMode && selectedIds.length > 0 && (
+        <div className="fixed bottom-16 inset-x-0 p-4 bg-[var(--tg-bg)] border-t border-[var(--tg-border)] shadow-lg flex items-center justify-between z-50 animate-slide-up pb-safe">
+          <div className="text-sm font-semibold text-[var(--tg-text)]">
+            {selectedIds.length} {selectedIds.length === 1 ? 'ad' : 'ads'} selected
+          </div>
+          <button
+            onClick={() => bulkApproveMut.mutate(selectedIds)}
+            disabled={bulkApproveMut.isPending}
+            className="btn-primary py-2 px-5 text-sm font-bold bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-md transition-all active:scale-95"
+          >
+            {bulkApproveMut.isPending ? 'Approving...' : 'Approve Selected'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

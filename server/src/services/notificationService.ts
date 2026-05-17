@@ -26,16 +26,7 @@ export async function createNotification(params: {
 
     // Send Telegram message if user preferences allow
     const user = notif.user;
-    const shouldSend = params.sendTelegram !== false && (
-      (params.type === 'ASSIGNMENT' && user.notifyAssign) ||
-      (params.type === 'REMINDER' && user.notifyRemind) ||
-      (params.type === 'EXPIRY_WARNING' && user.notifyExpiry) ||
-      (params.type === 'DAILY_SUMMARY' && user.notifyDigest) ||
-      params.type === 'STATUS_CHANGE' ||
-      params.type === 'APPROVAL_REQUEST' ||
-      params.type === 'APPROVAL_GRANTED' ||
-      params.type === 'APPROVAL_REJECTED'
-    );
+    const shouldSend = params.sendTelegram !== false && user.notificationsEnabled;
 
     if (shouldSend && user.telegramId && bot) {
       try {
@@ -171,7 +162,7 @@ async function autoActivatePostedAds(): Promise<void> {
   try {
     const now = new Date();
     await prisma.ad.updateMany({
-      where: { status: 'POSTED', startDate: { lte: now }, expiresAt: { gt: now } },
+      where: { status: 'ACTIVE', startDate: { lte: now }, expiresAt: { gt: now } },
       data: { status: 'ACTIVE' },
     });
   } catch (err) {
@@ -195,7 +186,7 @@ async function sendDailyAdminDigest(): Promise<void> {
     ]);
 
     const admins = await prisma.user.findMany({
-      where: { role: { in: ['ADMIN', 'MANAGER'] }, isActive: true, notifyDigest: true },
+      where: { role: { in: ['ADMIN', 'MANAGER'] }, isActive: true, notificationsEnabled: true },
     });
 
     const body = [

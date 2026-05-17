@@ -15,12 +15,9 @@ model User {
   firstName     String
   lastName      String?
   avatarUrl     String?
-  role          Role           @default(POSTER)
-  isActive      Boolean        @default(true)
-  notifyAssign  Boolean        @default(true)
-  notifyRemind  Boolean        @default(true)
-  notifyExpiry  Boolean        @default(true)
-  notifyDigest  Boolean        @default(true)
+  role                 Role           @default(POSTER)
+  isActive             Boolean        @default(true)
+  notificationsEnabled Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   status        UserStatus     @default(PENDING)
@@ -157,7 +154,6 @@ enum AdStatus {
   DRAFT
   PENDING_APPROVAL
   SCHEDULED
-  POSTED
   ACTIVE
   EXPIRED
   CANCELLED

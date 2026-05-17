@@ -38,7 +38,7 @@ export default function CalendarPage() {
   const eventPropGetter = (event: { ad: Ad }) => ({
     style: {
       backgroundColor: event.ad.channel.color,
-      opacity: event.ad.status === 'POSTED' || event.ad.status === 'ACTIVE' ? 0.6 : 1,
+      opacity: event.ad.status === 'ACTIVE' ? 0.6 : 1,
     }
   })
 

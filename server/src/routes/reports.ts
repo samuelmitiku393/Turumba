@@ -91,7 +91,7 @@ router.get('/monthly', async (req: AuthRequest, res: Response): Promise<void> =>
       prisma.channel.findMany({
         include: {
           ads: {
-            where: { createdAt: { gte: start, lt: end }, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
+            where: { createdAt: { gte: start, lt: end }, status: { in: ['ACTIVE', 'EXPIRED'] } },
             select: { revenue: true },
           },
           _count: { select: { ads: true } },
@@ -263,7 +263,7 @@ router.get('/yearly', async (req: AuthRequest, res: Response): Promise<void> => 
       prisma.channel.findMany({
         include: {
           ads: {
-            where: { createdAt: { gte: start, lt: end }, status: { in: ['POSTED', 'ACTIVE', 'EXPIRED'] } },
+            where: { createdAt: { gte: start, lt: end }, status: { in: ['ACTIVE', 'EXPIRED'] } },
             select: { revenue: true },
           },
         },
