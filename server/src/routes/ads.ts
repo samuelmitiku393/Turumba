@@ -34,7 +34,7 @@ const adSchema = z.object({
 // GET /api/ads
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, channelId, assignedToId, search, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc' } = req.query as Record<string, string>;
+    const { status, channelId, assignedToId, search, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc', groupByBulk = 'true' } = req.query as Record<string, string>;
 
     const where: Record<string, unknown> = {};
     if (status) where['status'] = status as AdStatus;
@@ -50,10 +50,11 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
-    const skip = (pageNum - 1) * limitNum;
 
-    const [ads, total] = await prisma.$transaction([
-      prisma.ad.findMany({
+    let ads, total;
+    if (groupByBulk === 'true') {
+      // Fetch all matching ads to perform dynamic grouping
+      const allAds = await prisma.ad.findMany({
         where,
         include: {
           channel: { select: { id: true, name: true, username: true, color: true } },
@@ -62,11 +63,132 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
           _count: { select: { chatMessages: true } },
         },
         orderBy: { [sortBy]: sortOrder },
-        skip,
-        take: limitNum,
-      }),
-      prisma.ad.count({ where }),
-    ]);
+      });
+
+      const groupedMap = new Map<string, typeof allAds>();
+      const ungrouped: typeof allAds = [];
+
+      for (const ad of allAds) {
+        if (ad.groupId) {
+          if (!groupedMap.has(ad.groupId)) {
+            groupedMap.set(ad.groupId, []);
+          }
+          groupedMap.get(ad.groupId)!.push(ad);
+        } else {
+          ungrouped.push(ad);
+        }
+      }
+
+      const finalAds: any[] = [...ungrouped];
+
+      for (const [gId, gAds] of groupedMap.entries()) {
+        if (gAds.length === 1) {
+          finalAds.push(gAds[0]);
+        } else {
+          gAds.sort((a, b) => {
+            const aTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+            const bTime = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+            return aTime - bTime;
+          });
+
+          const firstAd = gAds[0];
+          const lastAd = gAds[gAds.length - 1];
+
+          let groupStatus = 'SCHEDULED';
+          if (gAds.some(a => a.status === 'PENDING_APPROVAL')) {
+            groupStatus = 'PENDING_APPROVAL';
+          } else if (gAds.some(a => a.status === 'DRAFT')) {
+            groupStatus = 'DRAFT';
+          } else if (gAds.some(a => a.status === 'ACTIVE')) {
+            groupStatus = 'ACTIVE';
+          } else if (gAds.some(a => a.status === 'EXPIRED')) {
+            groupStatus = 'EXPIRED';
+          } else if (gAds.some(a => a.status === 'REJECTED')) {
+            groupStatus = 'REJECTED';
+          } else if (gAds.some(a => a.status === 'CANCELLED')) {
+            groupStatus = 'CANCELLED';
+          }
+
+          const totalRevenue = gAds.reduce((sum, a) => sum + (a.revenue ? Number(a.revenue) : 0), 0);
+          const cleanTitle = firstAd.title.replace(/\s*#\d+(\s*\(.*\))?$/, '').trim();
+
+          finalAds.push({
+            id: firstAd.id,
+            title: `🔄 [Bulk: ${gAds.length} Posts] ${cleanTitle}`,
+            content: firstAd.content,
+            mediaUrls: Array.from(new Set(gAds.flatMap(a => a.mediaUrls))),
+            advertiserName: firstAd.advertiserName,
+            advertiserContact: firstAd.advertiserContact,
+            advertiserEmail: firstAd.advertiserEmail,
+            channelId: firstAd.channelId,
+            durationDays: firstAd.durationDays,
+            startDate: firstAd.startDate,
+            scheduledAt: firstAd.scheduledAt,
+            expiresAt: lastAd.expiresAt,
+            status: groupStatus,
+            assignedToId: firstAd.assignedToId,
+            createdById: firstAd.createdById,
+            approvedById: firstAd.approvedById,
+            approvedAt: firstAd.approvedAt,
+            templateId: firstAd.templateId,
+            revenue: totalRevenue,
+            currency: 'ETB',
+            notes: firstAd.notes,
+            groupId: gId,
+            isBulkParent: true,
+            ads: gAds,
+            channel: firstAd.channel,
+            assignedTo: firstAd.assignedTo,
+            createdBy: firstAd.createdBy,
+            _count: {
+              chatMessages: gAds.reduce((sum, a) => sum + (a._count?.chatMessages || 0), 0)
+            }
+          });
+        }
+      }
+
+      // Re-sort grouped items according to requested parameter
+      finalAds.sort((a, b) => {
+        let valA = a[sortBy];
+        let valB = b[sortBy];
+        
+        if (valA instanceof Date) valA = valA.getTime();
+        if (valB instanceof Date) valB = valB.getTime();
+        
+        if (typeof valA === 'string' && !isNaN(Date.parse(valA))) valA = new Date(valA).getTime();
+        if (typeof valB === 'string' && !isNaN(Date.parse(valB))) valB = new Date(valB).getTime();
+
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return sortOrder === 'desc' ? valB - valA : valA - valB;
+        }
+        
+        return sortOrder === 'desc' 
+          ? String(valB || '').localeCompare(String(valA || ''))
+          : String(valA || '').localeCompare(String(valB || ''));
+      });
+
+      total = finalAds.length;
+      ads = finalAds.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+    } else {
+      const skip = (pageNum - 1) * limitNum;
+      const [allAds, count] = await prisma.$transaction([
+        prisma.ad.findMany({
+          where,
+          include: {
+            channel: { select: { id: true, name: true, username: true, color: true } },
+            assignedTo: { select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true } },
+            createdBy: { select: { id: true, firstName: true, lastName: true } },
+            _count: { select: { chatMessages: true } },
+          },
+          orderBy: { [sortBy]: sortOrder },
+          skip,
+          take: limitNum,
+        }),
+        prisma.ad.count({ where }),
+      ]);
+      ads = allAds;
+      total = count;
+    }
 
     res.json({ ads, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) });
   } catch (err) {
@@ -121,6 +243,7 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
         ? new Date(adFields.scheduledAt)
         : new Date();
 
+      const groupId = 'bulk_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
       const adsToCreate = [];
 
       for (let day = 0; day < recurrenceDays; day++) {
@@ -162,6 +285,7 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
             status: adFields.status || 'DRAFT',
             approvedById: adFields.status === 'SCHEDULED' ? req.user!.id : undefined,
             approvedAt: adFields.status === 'SCHEDULED' ? new Date() : undefined,
+            groupId,
           });
         }
       }
@@ -395,6 +519,46 @@ router.delete('/:id', requireManager, async (req: AuthRequest, res: Response): P
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete ad' });
+  }
+});
+
+// POST /api/ads/group/:groupId/approve
+router.post('/group/:groupId/approve', requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { groupId } = req.params;
+    const updated = await prisma.ad.updateMany({
+      where: { groupId, status: 'PENDING_APPROVAL' },
+      data: { status: 'SCHEDULED', approvedById: req.user!.id, approvedAt: new Date() },
+    });
+
+    await logActivity(req.user!.id, 'bulk_approved_group', undefined, { groupId, count: updated.count });
+    res.json({ message: `Successfully approved all ${updated.count} ads in campaign`, count: updated.count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to bulk approve campaign' });
+  }
+});
+
+// DELETE /api/ads/group/:groupId
+router.delete('/group/:groupId', requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { groupId } = req.params;
+    const ads = await prisma.ad.findMany({ where: { groupId }, select: { id: true } });
+    const adIds = ads.map(a => a.id);
+
+    await prisma.chatMessage.deleteMany({ where: { adId: { in: adIds } } });
+    await prisma.activityLog.deleteMany({ where: { adId: { in: adIds } } });
+    await prisma.notification.deleteMany({ where: { adId: { in: adIds } } });
+    
+    const deleted = await prisma.ad.deleteMany({
+      where: { groupId },
+    });
+
+    await logActivity(req.user!.id, 'bulk_deleted_group', undefined, { groupId, count: deleted.count });
+    res.json({ message: `Successfully deleted all ${deleted.count} ads in campaign` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to bulk delete campaign' });
   }
 });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ChevronLeft, Edit, Trash2, Send, MessageCircle } from 'lucide-react'
@@ -13,6 +13,7 @@ import { AdCardSkeleton } from '../components/Skeletons'
 export default function AdDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const user = useAuthStore(s => s.user)
   const [msg, setMsg] = useState('')
@@ -49,10 +50,173 @@ export default function AdDetailPage() {
     }
   })
 
+  const approveGroupMut = useMutation({
+    mutationFn: (gId: string) => adsApi.approveGroup(gId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
+      toast.success('All campaign ads successfully approved')
+      navigate('/ads')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to approve campaign')
+  })
+
+  const deleteGroupMut = useMutation({
+    mutationFn: (gId: string) => adsApi.deleteGroup(gId),
+    onSuccess: () => {
+      toast.success('Entire campaign deleted')
+      navigate('/ads')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to delete campaign')
+  })
+
   if (isLoading) return <div className="p-4"><AdCardSkeleton /></div>
   if (!ad) return <div className="p-4 text-center mt-10">Ad not found</div>
 
   const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+
+  if (ad.isBulkParent) {
+    const sortedChildren = [...(ad.ads || [])].sort((a, b) => {
+      const aTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+      const bTime = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    const pendingCount = ad.ads?.filter(a => a.status === 'PENDING_APPROVAL').length || 0;
+
+    return (
+      <div className="flex flex-col min-h-dvh bg-[var(--tg-secondary)]">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-[var(--tg-bg)] px-4 py-3 border-b border-[var(--tg-border)] flex items-center justify-between shadow-sm">
+          <button onClick={() => navigate('/ads')} className="p-1.5 -ml-1.5 rounded-full bg-[var(--tg-secondary)]">
+            <ChevronLeft className="w-5 h-5 text-[var(--tg-text)]" />
+          </button>
+          <div className="flex gap-2">
+            {isManager && ad.groupId && (
+              <button
+                onClick={() => { if (window.confirm('Delete this entire recurring campaign?')) deleteGroupMut.mutate(ad.groupId!) }}
+                className="p-1.5 rounded-full text-red-500 bg-red-500/10 flex items-center gap-1 px-3 py-1 text-xs font-bold active:scale-95 transition-transform"
+              >
+                <Trash2 className="w-4.5 h-4.5" /> Delete Campaign
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto pb-20 p-4 space-y-4">
+          {/* Campaign Card */}
+          <div className="card p-4">
+            <div className="flex justify-between items-start gap-4 mb-3">
+              <div>
+                <span className="text-[10px] font-extrabold text-indigo-600 bg-indigo-500/10 px-2 py-0.5 rounded-full inline-block mb-1.5 uppercase">
+                  🔄 Bulk Campaign ({ad.ads?.length} Posts)
+                </span>
+                <h1 className="text-xl font-bold text-[var(--tg-text)] leading-tight">
+                  {ad.title.replace(/🔄\s*\[Bulk:\s*\d+\s*Posts\]\s*/, '')}
+                </h1>
+              </div>
+              <StatusBadge status={ad.status} size="md" />
+            </div>
+
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-3 h-3 rounded-full" style={{ background: ad.channel.color }} />
+              <span className="text-sm font-semibold text-[var(--tg-text)]">{ad.channel.name}</span>
+              <span className="text-xs text-[var(--tg-hint)]">({ad.channel.username})</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+              <div>
+                <span className="text-[var(--tg-hint)] block mb-0.5">Advertiser</span>
+                <span className="font-medium text-[var(--tg-text)]">{ad.advertiserName}</span>
+              </div>
+              <div>
+                <span className="text-[var(--tg-hint)] block mb-0.5">Assigned To</span>
+                <span className="font-medium text-[var(--tg-text)]">{ad.assignedTo?.firstName || 'Unassigned'}</span>
+              </div>
+              <div>
+                <span className="text-[var(--tg-hint)] block mb-0.5">Start Date</span>
+                <span className="font-medium text-[var(--tg-text)]">
+                  {ad.scheduledAt ? format(new Date(ad.scheduledAt), 'MMM d, yyyy') : 'Not scheduled'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[var(--tg-hint)] block mb-0.5">End Date</span>
+                <span className="font-medium text-[var(--tg-text)]">
+                  {ad.expiresAt ? format(new Date(ad.expiresAt), 'MMM d, yyyy') : 'Not scheduled'}
+                </span>
+              </div>
+            </div>
+
+            {ad.revenue && (
+              <div className="mt-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20 inline-block">
+                <span className="text-xs text-green-600 font-semibold">Total Revenue: {ad.currency} {Number(ad.revenue).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Group Status Action Panel */}
+          {ad.status === 'PENDING_APPROVAL' && isManager && (
+            <div className="card p-4 border border-indigo-500/20 bg-indigo-500/5">
+              <h3 className="text-xs font-semibold text-[var(--tg-hint)] uppercase tracking-wider mb-2">Campaign Action</h3>
+              <p className="text-xs text-[var(--tg-hint)] mb-3">There are {pendingCount} posts in this campaign pending your approval.</p>
+              <button
+                onClick={() => ad.groupId && approveGroupMut.mutate(ad.groupId)}
+                disabled={approveGroupMut.isPending}
+                className="btn-primary w-full py-3 bg-green-500 text-white font-bold shadow-md hover:bg-green-600 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {approveGroupMut.isPending ? 'Approving All...' : '✅ Approve Entire Campaign At Once'}
+              </button>
+            </div>
+          )}
+
+          {/* Content Description */}
+          <div className="card p-4 space-y-2">
+            <h3 className="text-xs font-semibold text-[var(--tg-hint)] uppercase tracking-wider">Campaign Copy</h3>
+            <p className="text-sm text-[var(--tg-text)] whitespace-pre-wrap">{ad.content}</p>
+            {ad.mediaUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-1.5 mt-2">
+                {ad.mediaUrls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer" className="block relative aspect-video rounded-lg overflow-hidden bg-[var(--tg-secondary)]">
+                    {url.includes('video') ? (
+                      <video src={url} className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={url} className="w-full h-full object-cover" alt="" />
+                    )}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Individual Child Posts */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-[var(--tg-hint)] uppercase tracking-wider px-1">Campaign Schedule ({ad.ads?.length} Individual Posts)</h3>
+            <div className="space-y-2">
+              {sortedChildren.map((child, index) => (
+                <div
+                  key={child.id}
+                  onClick={() => navigate(`/ads/${child.id}`)}
+                  className="card p-3 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform cursor-pointer hover:bg-[var(--tg-secondary)]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-[var(--tg-text)]">Post #{index + 1}</span>
+                      <StatusBadge status={child.status} size="sm" />
+                    </div>
+                    <div className="text-[11px] text-[var(--tg-hint)] font-medium">
+                      📅 {child.scheduledAt ? format(new Date(child.scheduledAt), 'EEEE, MMM d @ HH:mm') : 'Unscheduled'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 text-xs font-semibold text-[var(--tg-button)] bg-[var(--tg-button)]/10 px-2.5 py-1 rounded-lg">
+                    Manage ➔
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-dvh bg-[var(--tg-secondary)]">

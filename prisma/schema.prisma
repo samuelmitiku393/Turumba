@@ -68,6 +68,7 @@ model Ad {
   currency          String         @default("ETB")
   notes             String?
   rejectionReason   String?
+  groupId           String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   activities        ActivityLog[]

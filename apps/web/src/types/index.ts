@@ -80,6 +80,9 @@ export interface Ad {
   rejectionReason?: string
   createdAt: string
   updatedAt: string
+  groupId?: string
+  isBulkParent?: boolean
+  ads?: Ad[]
   _count?: { chatMessages: number }
   chatMessages?: ChatMessage[]
   activities?: ActivityLog[]

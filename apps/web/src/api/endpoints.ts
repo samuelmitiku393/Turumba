@@ -31,6 +31,10 @@ export const adsApi = {
     api.post(`/ads/${id}/chat`, { content }).then(r => r.data),
   bulkApprove: (adIds: string[]) =>
     api.post<{ message: string; count: number }>('/ads/bulk-approve', { adIds }).then(r => r.data),
+  approveGroup: (groupId: string) =>
+    api.post<{ message: string; count: number }>(`/ads/group/${groupId}/approve`).then(r => r.data),
+  deleteGroup: (groupId: string) =>
+    api.delete(`/ads/group/${groupId}`).then(r => r.data),
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────────
