@@ -34,12 +34,13 @@ const adSchema = z.object({
 // GET /api/ads
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, channelId, assignedToId, search, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc', groupByBulk = 'true' } = req.query as Record<string, string>;
+    const { status, channelId, assignedToId, search, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc', groupByBulk = 'true', groupId } = req.query as Record<string, string>;
 
     const where: Record<string, unknown> = {};
     if (status) where['status'] = status as AdStatus;
     if (channelId) where['channelId'] = channelId;
     if (assignedToId) where['assignedToId'] = assignedToId;
+    if (groupId) where['groupId'] = groupId;
     if (search) {
       where['OR'] = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -51,8 +52,10 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
 
+    const shouldGroup = groupByBulk === 'true' && !groupId;
+
     let ads, total;
-    if (groupByBulk === 'true') {
+    if (shouldGroup) {
       // Fetch all matching ads to perform dynamic grouping
       const allAds = await prisma.ad.findMany({
         where,

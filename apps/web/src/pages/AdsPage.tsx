@@ -33,6 +33,7 @@ export default function AdsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectMode, setSelectMode] = useState(false)
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([])
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   const { data: channels } = useQuery({
     queryKey: ['channels'],
@@ -40,8 +41,8 @@ export default function AdsPage() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ads', { search, status, channelId, page }],
-    queryFn: () => adsApi.list({ search, status, channelId, page, limit: 10 }),
+    queryKey: ['ads', { search, status, channelId, page, selectedGroupId }],
+    queryFn: () => adsApi.list({ search, status, channelId, page, limit: 10, groupId: selectedGroupId || '' }),
     placeholderData: (prev) => prev,
   })
 
@@ -179,6 +180,22 @@ export default function AdsPage() {
             </button>
           )}
         </div>
+        {selectedGroupId && (
+          <div className="px-4 py-2 bg-indigo-500/10 border-t border-indigo-500/20 flex items-center justify-between animate-fade-in">
+            <span className="text-xs font-bold text-indigo-600 flex items-center gap-1.5">
+              🔄 Active Filter: Bulk Campaign Posts
+            </span>
+            <button
+              onClick={() => {
+                setSelectedGroupId(null)
+                setSelectedIds([])
+              }}
+              className="text-xs font-extrabold text-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-0.5 rounded-full transition-all active:scale-95"
+            >
+              Clear Filter ✕
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -227,6 +244,12 @@ export default function AdsPage() {
                                 ? prev.filter(id => id !== ad.groupId)
                                 : [...prev, ad.groupId!]
                             )
+                          }
+                        }}
+                        onClick={() => {
+                          if (ad.groupId) {
+                            setSelectedGroupId(ad.groupId)
+                            setSelectedIds([])
                           }
                         }}
                       />

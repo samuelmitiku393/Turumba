@@ -12,9 +12,10 @@ interface Props {
   view?: 'list' | 'grid'
   isExpanded?: boolean
   onToggleExpand?: () => void
+  onClick?: () => void
 }
 
-export default function AdCard({ ad, view = 'list', isExpanded = false, onToggleExpand }: Props) {
+export default function AdCard({ ad, view = 'list', isExpanded = false, onToggleExpand, onClick }: Props) {
   const navigate = useNavigate()
 
   const scheduledDate = ad.scheduledAt ? new Date(ad.scheduledAt) : null
@@ -34,7 +35,13 @@ export default function AdCard({ ad, view = 'list', isExpanded = false, onToggle
         {/* Main top card */}
         <motion.div
           whileTap={{ scale: 0.98 }}
-          onClick={() => navigate(`/ads/${ad.id}?groupId=${ad.groupId}`)}
+          onClick={() => {
+            if (onClick) {
+              onClick()
+            } else {
+              navigate(`/ads/${ad.id}?groupId=${ad.groupId}`)
+            }
+          }}
           className={clsx(
             'relative card p-4 cursor-pointer shadow-lg active:shadow-sm transition-shadow duration-150 border-l-4 border-l-indigo-500 bg-[var(--tg-bg)] z-10',
             view === 'grid' ? 'flex flex-col h-full' : ''
