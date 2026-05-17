@@ -10,9 +10,11 @@ import StatusBadge from './StatusBadge'
 interface Props {
   ad: Ad
   view?: 'list' | 'grid'
+  isExpanded?: boolean
+  onToggleExpand?: () => void
 }
 
-export default function AdCard({ ad, view = 'list' }: Props) {
+export default function AdCard({ ad, view = 'list', isExpanded = false, onToggleExpand }: Props) {
   const navigate = useNavigate()
 
   const scheduledDate = ad.scheduledAt ? new Date(ad.scheduledAt) : null
@@ -49,9 +51,20 @@ export default function AdCard({ ad, view = 'list' }: Props) {
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
               <StatusBadge status={ad.status} />
-              <span className="text-[9px] font-extrabold text-indigo-600 bg-indigo-500/10 px-2 py-0.5 rounded-full shrink-0">
-                {ad.ads?.length || 0} posts
-              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (onToggleExpand) onToggleExpand()
+                }}
+                className={clsx(
+                  "text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 transition-all active:scale-95 flex items-center gap-1",
+                  isExpanded 
+                    ? "bg-indigo-500 text-white shadow-md"
+                    : "text-indigo-600 bg-indigo-500/10 hover:bg-indigo-500/20"
+                )}
+              >
+                {isExpanded ? "Collapse ▴" : `${ad.ads?.length || 0} posts ▾`}
+              </button>
             </div>
           </div>
 

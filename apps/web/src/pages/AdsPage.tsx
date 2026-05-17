@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, Filter, LayoutGrid, LayoutList } from 'lucide-react'
+import { Search, Filter, LayoutGrid, LayoutList, Check, Edit, Trash2 } from 'lucide-react'
 import { adsApi, channelsApi } from '../api/endpoints'
 import { ListSkeleton } from '../components/Skeletons'
 import AdCard from '../components/AdCard'
@@ -20,6 +21,7 @@ const STATUSES: { value: AdStatus | ''; label: string }[] = [
 
 export default function AdsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
 
@@ -30,6 +32,7 @@ export default function AdsPage() {
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectMode, setSelectMode] = useState(false)
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([])
 
   const { data: channels } = useQuery({
     queryKey: ['channels'],
@@ -188,31 +191,141 @@ export default function AdsPage() {
             view === 'grid' ? 'grid grid-cols-2' : 'flex flex-col'
           )}>
             {data.ads.map(ad => {
+              const isGroupExpanded = ad.groupId ? expandedGroupIds.includes(ad.groupId) : false
               const isSelected = ad.isBulkParent && ad.ads
                 ? ad.ads.every(c => selectedIds.includes(c.id))
                 : selectedIds.includes(ad.id)
 
               return (
-                <div key={ad.id} className="flex items-center gap-3 w-full">
-                  {isBulkMode && (
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleSelect(ad)}
-                      className="w-5 h-5 rounded border-[var(--tg-border)] accent-[var(--tg-button)] shrink-0 cursor-pointer"
-                    />
-                  )}
-                  <div
-                    className="flex-1 min-w-0"
-                    onClickCapture={(e) => {
-                      if (isBulkMode) {
-                        e.stopPropagation();
-                        handleToggleSelect(ad);
-                      }
-                    }}
-                  >
-                    <AdCard ad={ad} view={view} />
+                <div key={ad.id} className="flex flex-col w-full gap-2">
+                  <div className="flex items-center gap-3 w-full">
+                    {isBulkMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(ad)}
+                        className="w-5 h-5 rounded border-[var(--tg-border)] accent-[var(--tg-button)] shrink-0 cursor-pointer"
+                      />
+                    )}
+                    <div
+                      className="flex-1 min-w-0"
+                      onClickCapture={(e) => {
+                        if (isBulkMode) {
+                          e.stopPropagation();
+                          handleToggleSelect(ad);
+                        }
+                      }}
+                    >
+                      <AdCard
+                        ad={ad}
+                        view={view}
+                        isExpanded={isGroupExpanded}
+                        onToggleExpand={() => {
+                          if (ad.groupId) {
+                            setExpandedGroupIds(prev =>
+                              prev.includes(ad.groupId!)
+                                ? prev.filter(id => id !== ad.groupId)
+                                : [...prev, ad.groupId!]
+                            )
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
+
+                  {ad.isBulkParent && isGroupExpanded && ad.ads && (
+                    <div className="ml-8 mt-1 space-y-2 border-l-2 border-indigo-500/30 pl-3 animate-fade-in mb-2">
+                      {ad.ads.map((child, index) => {
+                        const isChildSelected = selectedIds.includes(child.id);
+                        const isChildPending = child.status === 'PENDING_APPROVAL';
+
+                        return (
+                          <div
+                            key={child.id}
+                            className="flex items-center gap-3 w-full p-2.5 bg-[var(--tg-bg)] rounded-xl border border-[var(--tg-border)]/50 shadow-sm hover:border-[var(--tg-button)]/30 transition-all"
+                          >
+                            {isBulkMode && (
+                              <input
+                                type="checkbox"
+                                checked={isChildSelected}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedIds(prev =>
+                                    prev.includes(child.id) ? prev.filter(x => x !== child.id) : [...prev, child.id]
+                                  )
+                                }}
+                                className="w-4.5 h-4.5 rounded border-[var(--tg-border)] accent-[var(--tg-button)] shrink-0 cursor-pointer"
+                              />
+                            )}
+
+                            <div
+                              onClick={() => navigate(`/ads/${child.id}`)}
+                              className="flex-1 min-w-0 cursor-pointer"
+                            >
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-xs font-bold text-[var(--tg-text)]">Post #{index + 1}</span>
+                                <StatusBadge status={child.status} size="sm" />
+                              </div>
+                              <div className="text-[10px] text-[var(--tg-hint)] font-semibold">
+                                📅 {child.scheduledAt ? format(new Date(child.scheduledAt), 'MMM d, EEEE @ HH:mm') : 'Unscheduled'}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isChildPending && isManager && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await adsApi.updateStatus(child.id, 'SCHEDULED');
+                                      toast.success(`Post #${index + 1} approved successfully!`);
+                                      queryClient.invalidateQueries({ queryKey: ['ads'] });
+                                    } catch (err: any) {
+                                      toast.error(err.response?.data?.error || 'Failed to approve post');
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-green-500 bg-green-500/10 hover:bg-green-500/20 active:scale-90 transition-transform"
+                                  title="Approve Post"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/ads/${child.id}/edit`);
+                                }}
+                                className="p-1.5 rounded-lg text-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-90 transition-transform"
+                                title="Edit Post"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              {isManager && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Delete Post #${index + 1} permanently?`)) {
+                                      try {
+                                        await adsApi.delete(child.id);
+                                        toast.success(`Post #${index + 1} deleted successfully!`);
+                                        queryClient.invalidateQueries({ queryKey: ['ads'] });
+                                      } catch (err: any) {
+                                        toast.error(err.response?.data?.error || 'Failed to delete post');
+                                      }
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-red-500 bg-red-500/10 hover:bg-red-500/20 active:scale-90 transition-transform"
+                                  title="Delete Post"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
