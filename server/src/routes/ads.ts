@@ -507,6 +507,30 @@ router.post('/bulk-approve', requireManager, async (req: AuthRequest, res: Respo
   }
 });
 
+// POST /api/ads/bulk-delete
+router.post('/bulk-delete', requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { adIds } = req.body as { adIds: string[] };
+    if (!Array.isArray(adIds) || adIds.length === 0) {
+      res.status(400).json({ error: 'adIds array is required' }); return;
+    }
+
+    await prisma.chatMessage.deleteMany({ where: { adId: { in: adIds } } });
+    await prisma.activityLog.deleteMany({ where: { adId: { in: adIds } } });
+    await prisma.notification.deleteMany({ where: { adId: { in: adIds } } });
+    
+    const deleted = await prisma.ad.deleteMany({
+      where: { id: { in: adIds } },
+    });
+
+    await logActivity(req.user!.id, 'bulk_deleted_ads', undefined, { count: deleted.count, adIds });
+    res.json({ message: `Successfully deleted all ${deleted.count} ads!`, count: deleted.count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to bulk delete ads' });
+  }
+});
+
 // DELETE /api/ads/:id
 router.delete('/:id', requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

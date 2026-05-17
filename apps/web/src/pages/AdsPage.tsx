@@ -29,6 +29,7 @@ export default function AdsPage() {
   const [view, setView] = useState<'list' | 'grid'>('list')
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectMode, setSelectMode] = useState(false)
 
   const { data: channels } = useQuery({
     queryKey: ['channels'],
@@ -41,7 +42,7 @@ export default function AdsPage() {
     placeholderData: (prev) => prev,
   })
 
-  const isBulkMode = isManager && status === 'PENDING_APPROVAL'
+  const isBulkMode = isManager && (selectMode || status === 'PENDING_APPROVAL')
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev =>
@@ -51,11 +52,11 @@ export default function AdsPage() {
 
   const handleSelectAll = () => {
     if (!data?.ads) return
-    const pendingIds = data.ads.map(ad => ad.id)
-    if (selectedIds.length === pendingIds.length) {
+    const ids = data.ads.map(ad => ad.id)
+    if (selectedIds.length === ids.length) {
       setSelectedIds([])
     } else {
-      setSelectedIds(pendingIds)
+      setSelectedIds(ids)
     }
   }
 
@@ -68,6 +69,19 @@ export default function AdsPage() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.error || 'Failed to approve ads')
+    }
+  })
+
+  const bulkDeleteMut = useMutation({
+    mutationFn: adsApi.bulkDelete,
+    onSuccess: (res) => {
+      toast.success(res.message || `Successfully deleted ${res.count} ads!`)
+      setSelectedIds([])
+      setSelectMode(false)
+      queryClient.invalidateQueries({ queryKey: ['ads'] })
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to delete ads')
     }
   })
 
@@ -104,6 +118,22 @@ export default function AdsPage() {
               className="input pl-9 h-10 text-sm w-full"
             />
           </div>
+          {isManager && (
+            <button
+              onClick={() => {
+                setSelectMode(!selectMode)
+                setSelectedIds([])
+              }}
+              className={clsx(
+                'px-4 rounded-xl text-xs font-bold shrink-0 border transition-all active:scale-95 flex items-center gap-1 h-10',
+                selectMode
+                  ? 'bg-indigo-500 border-indigo-500 text-white shadow-md'
+                  : 'bg-[var(--tg-bg)] border-[var(--tg-border)] text-[var(--tg-text)]'
+              )}
+            >
+              Select Mode
+            </button>
+          )}
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
@@ -205,19 +235,34 @@ export default function AdsPage() {
         )}
       </div>
 
-      {/* Floating Action Bar for Bulk Approval */}
+      {/* Floating Action Bar for Bulk Actions */}
       {isBulkMode && selectedIds.length > 0 && (
         <div className="fixed bottom-16 inset-x-0 p-4 bg-[var(--tg-bg)] border-t border-[var(--tg-border)] shadow-lg flex items-center justify-between z-50 animate-slide-up pb-safe">
           <div className="text-sm font-semibold text-[var(--tg-text)]">
             {selectedIds.length} {selectedIds.length === 1 ? 'ad' : 'ads'} selected
           </div>
-          <button
-            onClick={() => bulkApproveMut.mutate(selectedIds)}
-            disabled={bulkApproveMut.isPending}
-            className="btn-primary py-2 px-5 text-sm font-bold bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-md transition-all active:scale-95"
-          >
-            {bulkApproveMut.isPending ? 'Approving...' : 'Approve Selected'}
-          </button>
+          <div className="flex gap-2">
+            {status === 'PENDING_APPROVAL' && (
+              <button
+                onClick={() => bulkApproveMut.mutate(selectedIds)}
+                disabled={bulkApproveMut.isPending || bulkDeleteMut.isPending}
+                className="btn-primary py-2 px-4 text-xs font-bold bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-md transition-all active:scale-95"
+              >
+                {bulkApproveMut.isPending ? 'Approving...' : 'Approve'}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (window.confirm(`Delete the ${selectedIds.length} selected ads permanently?`)) {
+                  bulkDeleteMut.mutate(selectedIds)
+                }
+              }}
+              disabled={bulkApproveMut.isPending || bulkDeleteMut.isPending}
+              className="btn-danger py-2 px-4 text-xs font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition-all active:scale-95"
+            >
+              {bulkDeleteMut.isPending ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         </div>
       )}
     </div>
