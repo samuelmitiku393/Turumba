@@ -433,11 +433,17 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response): Promise<voi
     if (!existing) { res.status(404).json({ error: 'Ad not found' }); return; }
 
     // Permission checks
-    if (status === 'PENDING_APPROVAL' && req.user!.role !== 'POSTER' && req.user!.role !== 'MANAGER' && req.user!.role !== 'ADMIN') {
-      res.status(403).json({ error: 'Insufficient permissions' }); return;
+    // Only creator or manager can submit for approval
+    if (status === 'PENDING_APPROVAL') {
+      const isCreator = existing.createdById === req.user!.id;
+      const isManagerOrAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'MANAGER';
+      if (!isCreator && !isManagerOrAdmin) {
+        res.status(403).json({ error: 'Only the ad creator or a manager can submit for approval' }); return;
+      }
     }
-    if ((status === 'SCHEDULED' || status === 'CANCELLED') && req.user!.role === 'POSTER') {
-      res.status(403).json({ error: 'Manager or Admin required to approve/cancel' }); return;
+    // Only managers/admins can approve, cancel, reject, or force-expire
+    if (['SCHEDULED', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(status) && req.user!.role === 'POSTER') {
+      res.status(403).json({ error: 'Manager or Admin required' }); return;
     }
 
     const updateData: Record<string, unknown> = { status, rejectionReason: rejectionReason ?? null };
