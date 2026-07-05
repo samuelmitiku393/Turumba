@@ -201,13 +201,21 @@ async function autoExpireAds(): Promise<void> {
   }
 }
 
-// ── Auto-activate posted ads ──────────────────────────────────────────────────
+// ── Auto-activate scheduled ads once their time arrives ───────────────────────
+// Transitions SCHEDULED → ACTIVE for ads whose scheduledAt has passed, so
+// posters who forget to manually flip the status don't leave ads stuck.
 async function autoActivatePostedAds(): Promise<void> {
   try {
     const now = new Date();
     await prisma.ad.updateMany({
-      where: { status: 'ACTIVE', startDate: { lte: now }, expiresAt: { gt: now } },
-      data: { status: 'ACTIVE' },
+      where: {
+        status: 'SCHEDULED',
+        scheduledAt: { lte: now },
+      },
+      data: {
+        status: 'ACTIVE',
+        postedAt: now,
+      },
     });
   } catch (err) {
     console.error('[Scheduler] Auto-activate job failed:', err);

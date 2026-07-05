@@ -21,7 +21,7 @@ const adSchema = z.object({
   startDate: z.string().optional(),
   scheduledAt: z.string().optional(),
   assignedToId: z.string().cuid().optional(),
-  templateId: z.string().cuid().optional(),
+
   revenue: z.number().min(0).optional(),
   notes: z.string().max(1000).optional(),
   isRecurring: z.boolean().optional().default(false),
@@ -133,7 +133,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
             createdById: firstAd.createdById,
             approvedById: firstAd.approvedById,
             approvedAt: firstAd.approvedAt,
-            templateId: firstAd.templateId,
+
             revenue: totalRevenue,
             currency: 'ETB',
             notes: firstAd.notes,
@@ -210,7 +210,7 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
         assignedTo: { select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true, role: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true, username: true } },
         approvedBy: { select: { id: true, firstName: true, lastName: true } },
-        template: { select: { id: true, name: true } },
+
         chatMessages: {
           include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
           orderBy: { createdAt: 'asc' },
@@ -280,7 +280,7 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
             scheduledAt,
             expiresAt,
             assignedToId: adFields.assignedToId,
-            templateId: adFields.templateId,
+
             revenue: adFields.revenue ? adFields.revenue : undefined,
             currency: 'ETB',
             notes: adFields.notes,

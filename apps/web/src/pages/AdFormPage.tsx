@@ -6,11 +6,31 @@ import { z } from 'zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Save, Loader2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { adsApi, channelsApi, teamApi, uploadApi, templatesApi } from '../api/endpoints'
+import { adsApi, channelsApi, teamApi, uploadApi } from '../api/endpoints'
 import { format } from 'date-fns'
 import { useAuthStore } from '../stores/authStore'
 import { clsx } from 'clsx'
 
+// ── localStorage-backed templates (server Template model was removed) ──────────
+const TEMPLATES_KEY = 'turumba_templates'
+
+interface LocalTemplate {
+  id: string
+  name: string
+  content: string
+  mediaUrls: string[]
+  advertiserName?: string
+  defaultDuration: number
+}
+
+function loadTemplates(): LocalTemplate[] {
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]') } catch { return [] }
+}
+function persistTemplates(templates: LocalTemplate[]) {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates))
+}
+
+// ── Form schema ───────────────────────────────────────────────────────────────
 const adSchema = z.object({
   title: z.string().min(1, 'Required'),
   content: z.string().min(1, 'Required'),
@@ -38,12 +58,12 @@ export default function AdFormPage() {
   const [uploading, setUploading] = useState(false)
   const [time1, setTime1] = useState('10:00')
   const [time2, setTime2] = useState('16:00')
+  const [templates, setTemplates] = useState<LocalTemplate[]>(loadTemplates)
   const user = useAuthStore(s => s.user)
   const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
 
   const { data: channels } = useQuery({ queryKey: ['channels'], queryFn: channelsApi.list })
   const { data: team } = useQuery({ queryKey: ['team'], queryFn: teamApi.list })
-  const { data: templates } = useQuery({ queryKey: ['templates'], queryFn: templatesApi.list })
   const { data: ad, isLoading: adLoading } = useQuery({
     queryKey: ['ad', id],
     queryFn: () => adsApi.get(id!),
@@ -97,7 +117,7 @@ export default function AdFormPage() {
         ? data.postsPerDay === 2
           ? [time1, time2]
           : [time1]
-        : undefined;
+        : undefined
 
       const payload = {
         ...data,
@@ -122,22 +142,21 @@ export default function AdFormPage() {
     }
   })
 
-  const saveTemplateMut = useMutation({
-    mutationFn: (data: AdFormData) => templatesApi.create({
+  // Save the current form state as a local template
+  const handleSaveTemplate = (data: AdFormData) => {
+    const newTemplate: LocalTemplate = {
+      id: Date.now().toString(),
       name: data.title || 'Untitled Template',
       content: data.content,
-      mediaUrls: data.mediaUrls,
+      mediaUrls: data.mediaUrls || [],
       advertiserName: data.advertiserName,
       defaultDuration: data.durationDays,
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
-      toast.success('Template saved successfully!')
-    },
-    onError: () => {
-      toast.error('Failed to save template')
     }
-  })
+    const updated = [...templates, newTemplate]
+    persistTemplates(updated)
+    setTemplates(updated)
+    toast.success('Template saved locally!')
+  }
 
   if (isEdit && adLoading) return <div className="p-4 text-center mt-10">Loading...</div>
 
@@ -159,12 +178,13 @@ export default function AdFormPage() {
 
       <div className="flex-1 overflow-y-auto pb-20 p-4 space-y-4">
         <div className="card p-4 space-y-4">
-          {!isEdit && (
+          {/* Template loader — only shown when templates exist */}
+          {!isEdit && templates.length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Load from Template</label>
               <select
                 onChange={(e) => {
-                  const t = templates?.find(x => x.id === e.target.value)
+                  const t = templates.find(x => x.id === e.target.value)
                   if (t) {
                     setValue('title', t.name)
                     setValue('content', t.content)
@@ -177,7 +197,7 @@ export default function AdFormPage() {
                 className="input py-0 h-11"
               >
                 <option value="">-- Choose a Template --</option>
-                {templates?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
           )}
@@ -318,7 +338,7 @@ export default function AdFormPage() {
               className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 bg-green-600 border border-green-700 text-white shadow-md active:scale-95 transition-all"
             >
               {mut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Create & Approve (Schedule)
+              Create &amp; Approve (Schedule)
             </button>
           )}
 
@@ -333,24 +353,23 @@ export default function AdFormPage() {
             {mut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {isEdit ? 'Save Changes' : 'Create & Save as Draft'}
           </button>
-          
+
           {!isEdit && (
-             <button
-                onClick={handleSubmit(d => mut.mutate({ data: d, status: 'PENDING_APPROVAL' }))}
-                disabled={mut.isPending || uploading}
-                className="btn-secondary w-full py-3.5 text-sm flex items-center justify-center gap-2 border-[var(--tg-button)] text-[var(--tg-button)] font-semibold active:scale-95 transition-all"
-             >
-                Create & Submit for Approval
-             </button>
+            <button
+              onClick={handleSubmit(d => mut.mutate({ data: d, status: 'PENDING_APPROVAL' }))}
+              disabled={mut.isPending || uploading}
+              className="btn-secondary w-full py-3.5 text-sm flex items-center justify-center gap-2 border-[var(--tg-button)] text-[var(--tg-button)] font-semibold active:scale-95 transition-all"
+            >
+              Create &amp; Submit for Approval
+            </button>
           )}
 
           <button
             type="button"
-            onClick={handleSubmit(d => saveTemplateMut.mutate(d))}
-            disabled={saveTemplateMut.isPending || uploading}
+            onClick={handleSubmit(handleSaveTemplate)}
+            disabled={uploading}
             className="btn-secondary w-full py-3 text-sm flex items-center justify-center gap-2 border-indigo-500 text-indigo-500 hover:bg-indigo-50/10 active:scale-95 transition-all"
           >
-            {saveTemplateMut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
             💾 Save Current Form as Template
           </button>
         </div>

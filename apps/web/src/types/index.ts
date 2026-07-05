@@ -73,7 +73,6 @@ export interface Ad {
   approvedById?: string
   approvedBy?: Pick<User, 'id' | 'firstName' | 'lastName'>
   approvedAt?: string
-  templateId?: string
   revenue?: number
   currency: string
   notes?: string
@@ -120,16 +119,6 @@ export interface Notification {
   ad?: Pick<Ad, 'id' | 'title'>
   isRead: boolean
   sentTg: boolean
-  createdAt: string
-}
-
-export interface Template {
-  id: string
-  name: string
-  content: string
-  mediaUrls: string[]
-  advertiserName?: string
-  defaultDuration: number
   createdAt: string
 }
 

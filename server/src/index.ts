@@ -18,11 +18,11 @@ import notificationsRouter from './routes/notifications';
 import analyticsRouter from './routes/analytics';
 import uploadRouter from './routes/upload';
 import reportsRouter from './routes/reports';
-import templatesRouter from './routes/templates';
+
 import { errorHandler } from './middleware/errorHandler';
 import { startNotificationScheduler } from './services/notificationService';
 import { startBot } from './bot';
-import { startCronJobs } from './services/cron';
+
 
 const app = express();
 app.set('trust proxy', 1); // Trust Render's proxy for rate limiting
@@ -67,7 +67,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/reports', reportsRouter);
-app.use('/api/templates', templatesRouter);
+
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use(errorHandler);
@@ -77,7 +77,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Turumba server running on port ${PORT}`);
   startBot();
   startNotificationScheduler();
-  startCronJobs();
+
 });
 
 export default app;
