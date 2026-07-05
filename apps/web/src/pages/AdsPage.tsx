@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Filter, LayoutGrid, LayoutList, Check, Edit, Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
 import { adsApi, channelsApi } from '../api/endpoints'
 import { ListSkeleton } from '../components/Skeletons'
 import AdCard from '../components/AdCard'
+import StatusBadge from '../components/StatusBadge'
 import type { AdStatus } from '../types'
 import { clsx } from 'clsx'
 import { useAuthStore } from '../stores/authStore'
@@ -26,6 +28,8 @@ export default function AdsPage() {
   const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER'
 
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [status, setStatus] = useState<AdStatus | ''>('')
   const [channelId, setChannelId] = useState('')
   const [view, setView] = useState<'list' | 'grid'>('list')
@@ -35,14 +39,24 @@ export default function AdsPage() {
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
+  // Debounce search: only fire API query 400ms after user stops typing
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1) // reset to page 1 on new search
+    }, 400)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [search])
+
   const { data: channels } = useQuery({
     queryKey: ['channels'],
     queryFn: channelsApi.list,
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ads', { search, status, channelId, page, selectedGroupId }],
-    queryFn: () => adsApi.list({ search, status, channelId, page, limit: 10, groupId: selectedGroupId || '' }),
+    queryKey: ['ads', { search: debouncedSearch, status, channelId, page, selectedGroupId }],
+    queryFn: () => adsApi.list({ search: debouncedSearch, status, channelId, page, limit: 10, groupId: selectedGroupId || '' }),
     placeholderData: (prev) => prev,
   })
 
