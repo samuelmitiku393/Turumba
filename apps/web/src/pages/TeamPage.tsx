@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Shield, ShieldAlert, User as UserIcon, Check, X, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Shield, ShieldAlert, User as UserIcon, Check, X, Trash2, CalendarClock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { teamApi } from '../api/endpoints'
 import { useAuthStore } from '../stores/authStore'
 import { MemberCardSkeleton } from '../components/Skeletons'
 
 export default function TeamPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const currentUser = useAuthStore(s => s.user)
   const isAdmin = currentUser?.role === 'ADMIN'
@@ -42,8 +44,14 @@ export default function TeamPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="sticky top-0 z-10 bg-[var(--tg-secondary)]/80 backdrop-blur-md px-4 pt-4 pb-3 border-b border-[var(--tg-border)]">
+      <div className="sticky top-0 z-10 bg-[var(--tg-secondary)]/80 backdrop-blur-md px-4 pt-4 pb-3 border-b border-[var(--tg-border)] flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--tg-text)]">Team</h1>
+        <button
+          onClick={() => navigate('/duty')}
+          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-[var(--tg-button)]/10 text-[var(--tg-button)] flex items-center gap-1 active:scale-95 transition-all"
+        >
+          <CalendarClock className="w-3.5 h-3.5" /> Duty Roster ➔
+        </button>
       </div>
 
       <div className="flex-1 p-4 space-y-5">

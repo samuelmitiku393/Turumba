@@ -3,6 +3,7 @@ import type {
   Ad, AdListResponse, Channel, User, Notification,
   DashboardStats, ActivityLog, RevenueByAdvertiser,
   ChannelAnalytics, TeamAnalytics, Template,
+  ManagerDuty, TodayDutyResponse,
 } from '../types'
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -37,6 +38,8 @@ export const adsApi = {
     api.post<{ message: string; count: number }>(`/ads/group/${groupId}/approve`).then(r => r.data),
   deleteGroup: (groupId: string) =>
     api.delete(`/ads/group/${groupId}`).then(r => r.data),
+  pass: (id: string) =>
+    api.post<{ message: string; ad: Ad; newManager: User }>(`/ads/${id}/pass`).then(r => r.data),
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────────
@@ -65,6 +68,18 @@ export const scheduleApi = {
     api.get<{ conflicts: Ad[]; hasConflicts: boolean }>(
       '/schedule/conflicts', { params }
     ).then(r => r.data),
+}
+
+// ── Duty Roster ───────────────────────────────────────────────────────────────
+export const dutyApi = {
+  list: (params?: { month?: string; start?: string; end?: string }) =>
+    api.get<ManagerDuty[]>('/duty', { params }).then(r => r.data),
+  getToday: () =>
+    api.get<TodayDutyResponse>('/duty/today').then(r => r.data),
+  assign: (date: string, managerId: string) =>
+    api.post<ManagerDuty>('/duty', { date, managerId }).then(r => r.data),
+  remove: (date: string) =>
+    api.delete<{ message: string }>(`/duty/${date}`).then(r => r.data),
 }
 
 // ── Team ──────────────────────────────────────────────────────────────────────

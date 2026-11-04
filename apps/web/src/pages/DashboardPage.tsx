@@ -3,10 +3,10 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { format, isToday, isTomorrow } from 'date-fns'
 import {
-  CheckCircle2, Clock, TrendingUp,
-  AlertTriangle, Plus, Calendar, BarChart2, ChevronRight
+  CheckCircle2, Clock,
+  AlertTriangle, Plus, Calendar, CalendarClock, UserCheck, ChevronRight
 } from 'lucide-react'
-import { analyticsApi } from '../api/endpoints'
+import { analyticsApi, dutyApi } from '../api/endpoints'
 import { useAuthStore } from '../stores/authStore'
 import { StatCardSkeleton, ListSkeleton } from '../components/Skeletons'
 import StatusBadge from '../components/StatusBadge'
@@ -96,6 +96,11 @@ export default function DashboardPage() {
     queryFn: analyticsApi.dashboard,
   })
 
+  const { data: todayDuty } = useQuery({
+    queryKey: ['duty', 'today'],
+    queryFn: dutyApi.getToday,
+  })
+
   const { data: upcoming, isLoading: upcomingLoading } = useQuery({
     queryKey: ['analytics', 'upcoming'],
     queryFn: analyticsApi.upcoming,
@@ -132,10 +137,16 @@ export default function DashboardPage() {
           </div>
         ) : stats ? (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Active Ads"       value={stats.activeAds}       icon={CheckCircle2} color="#4cd964" sub="Currently running" />
+            <StatCard label="Active Promos"    value={stats.activeAds}       icon={CheckCircle2} color="#4cd964" sub="Currently running" />
             <StatCard label="Posts Today"      value={stats.pendingToday}    icon={Clock}        color="#3390ec" sub="Scheduled" />
             <StatCard label="Expiring Soon"    value={stats.expiringThisWeek} icon={AlertTriangle} color="#ff9500" sub="Within 7 days" />
-            <StatCard label="Month Revenue"    value={`${stats.monthRevenue.toLocaleString()} ETB`} icon={TrendingUp} color="#af52de" sub="This month" />
+            <StatCard
+              label="On Duty Today"
+              value={todayDuty?.effectiveManager?.firstName ?? 'Rotating'}
+              icon={UserCheck}
+              color="#af52de"
+              sub={todayDuty?.isOverridden ? 'Admin Assigned' : 'Cyclical Rotation'}
+            />
           </div>
         ) : null}
       </section>
@@ -145,9 +156,9 @@ export default function DashboardPage() {
         <h2 className="text-xs font-semibold text-[var(--tg-hint)] uppercase tracking-wider mb-2">Quick Actions</h2>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'New Ad',    icon: Plus,      color: '#3390ec', action: () => navigate('/ads/new') },
-            { label: 'Calendar',  icon: Calendar,  color: '#af52de', action: () => navigate('/calendar') },
-            { label: 'Analytics', icon: BarChart2, color: '#ff9500', action: () => navigate('/analytics') },
+            { label: 'New Promo',   icon: Plus,          color: '#3390ec', action: () => navigate('/ads/new') },
+            { label: 'Duty Roster', icon: CalendarClock, color: '#4cd964', action: () => navigate('/duty') },
+            { label: 'Calendar',    icon: Calendar,      color: '#af52de', action: () => navigate('/calendar') },
           ].map(({ label, icon: Icon, color, action }) => (
             <motion.button
               key={label}

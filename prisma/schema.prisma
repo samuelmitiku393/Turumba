@@ -27,6 +27,7 @@ model User {
   createdAds    Ad[]           @relation("CreatedAds")
   chatMessages  ChatMessage[]
   notifications Notification[]
+  duties        ManagerDuty[]
 }
 
 model Channel {
@@ -69,6 +70,8 @@ model Ad {
   notes             String?
   rejectionReason   String?
   groupId           String?
+  lastAssignedAt    DateTime?
+  reassignCount     Int            @default(0)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   activities        ActivityLog[]
@@ -138,6 +141,23 @@ model ChatMessage {
   @@index([adId])
 }
 
+model ManagerDuty {
+  id        String   @id @default(cuid())
+  date      String   @unique // Format: YYYY-MM-DD
+  managerId String
+  manager   User     @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 enum Role {
   ADMIN
   MANAGER
@@ -169,4 +189,6 @@ enum NotificationType {
   APPROVAL_REQUEST
   APPROVAL_GRANTED
   APPROVAL_REJECTED
+  REASSIGNMENT
+  UNRESPONSIVE_ALERT
 }

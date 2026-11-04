@@ -20,6 +20,8 @@ export type NotificationType =
   | 'APPROVAL_REQUEST'
   | 'APPROVAL_GRANTED'
   | 'APPROVAL_REJECTED'
+  | 'REASSIGNMENT'
+  | 'UNRESPONSIVE_ALERT'
 
 export interface User {
   id: string
@@ -81,6 +83,8 @@ export interface Ad {
   createdAt: string
   updatedAt: string
   groupId?: string
+  lastAssignedAt?: string
+  reassignCount?: number
   isBulkParent?: boolean
   ads?: Ad[]
   _count?: { chatMessages: number }
@@ -131,6 +135,23 @@ export interface Template {
   advertiserName?: string
   defaultDuration: number
   createdAt: string
+}
+
+export interface ManagerDuty {
+  id: string
+  date: string // YYYY-MM-DD
+  managerId: string
+  manager: Pick<User, 'id' | 'firstName' | 'lastName' | 'username' | 'avatarUrl' | 'role'>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TodayDutyResponse {
+  todayDate: string
+  isOverridden: boolean
+  dutyManager: User | null
+  effectiveManager: User | null
+  activeManagers: Array<Pick<User, 'id' | 'firstName' | 'lastName' | 'username' | 'avatarUrl' | 'role'>>
 }
 
 // API response shapes

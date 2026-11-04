@@ -4,7 +4,8 @@ import { AdStatus } from '@prisma/client';
 import prisma from '../prisma/client';
 import { authenticate, requireManager, AuthRequest } from '../middleware/auth';
 import { logActivity } from '../services/activityService';
-import { createNotification } from '../services/notificationService';
+import { createNotification, sendAdAssetsToTelegram } from '../services/notificationService';
+import { determineManagerForAd, reassignUnresponsiveOrUnableAd } from '../services/dutyService';
 
 const router = Router();
 router.use(authenticate);
@@ -267,6 +268,13 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
             ? ` (${timeStr})`
             : '';
 
+          // Determine manager for this specific date if not explicitly passed
+          let targetManagerId = adFields.assignedToId;
+          if (!targetManagerId) {
+            const dutyOrCyclicManager = await determineManagerForAd(scheduledAt);
+            if (dutyOrCyclicManager) targetManagerId = dutyOrCyclicManager.id;
+          }
+
           adsToCreate.push({
             title: `${adFields.title}${titleSuffix}`,
             content: adFields.content,
@@ -279,7 +287,8 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
             startDate: scheduledAt,
             scheduledAt,
             expiresAt,
-            assignedToId: adFields.assignedToId,
+            assignedToId: targetManagerId,
+            lastAssignedAt: targetManagerId ? new Date() : undefined,
             templateId: adFields.templateId,
             revenue: adFields.revenue ? adFields.revenue : undefined,
             currency: 'ETB',
@@ -329,12 +338,20 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
       ? new Date(new Date(adFields.startDate).getTime() + adFields.durationDays * 86400000)
       : undefined;
 
+    let targetManagerId = adFields.assignedToId;
+    if (!targetManagerId) {
+      const dutyOrCyclic = await determineManagerForAd(adFields.scheduledAt || adFields.startDate);
+      if (dutyOrCyclic) targetManagerId = dutyOrCyclic.id;
+    }
+
     const ad = await prisma.ad.create({
       data: {
         ...adFields,
         startDate: adFields.startDate ? new Date(adFields.startDate) : undefined,
         scheduledAt: adFields.scheduledAt ? new Date(adFields.scheduledAt) : undefined,
         expiresAt,
+        assignedToId: targetManagerId,
+        lastAssignedAt: targetManagerId ? new Date() : undefined,
         createdById: req.user!.id,
         revenue: adFields.revenue ? adFields.revenue : undefined,
         currency: 'ETB',
@@ -445,14 +462,38 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response): Promise<voi
     if (status === 'SCHEDULED' || status === 'PENDING_APPROVAL') {
       updateData['approvedById'] = req.user!.id;
       updateData['approvedAt'] = new Date();
+
+      if (status === 'SCHEDULED' && !existing.assignedToId) {
+        const dutyOrCyclic = await determineManagerForAd(existing.scheduledAt || existing.startDate);
+        if (dutyOrCyclic) {
+          updateData['assignedToId'] = dutyOrCyclic.id;
+          updateData['lastAssignedAt'] = new Date();
+        }
+      }
     }
 
     const ad = await prisma.ad.update({
       where: { id: req.params['id'] },
       data: updateData,
+      include: {
+        channel: { select: { id: true, name: true, username: true, color: true } },
+        assignedTo: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
     });
 
     await logActivity(req.user!.id, 'status_changed', ad.id, undefined, existing.status, status);
+
+    // If scheduled and assigned, notify assigned manager
+    if (status === 'SCHEDULED' && ad.assignedToId && ad.assignedToId !== req.user!.id) {
+      await createNotification({
+        userId: ad.assignedToId,
+        type: 'ASSIGNMENT',
+        title: 'Promotion Approved & Assigned',
+        body: `"${ad.title}" has been approved for ${ad.channel.name}. You are assigned to make this post.`,
+        adId: ad.id,
+      });
+    }
 
     // Notify creator of status change
     if (existing.createdById !== req.user!.id) {
@@ -469,6 +510,43 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response): Promise<voi
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// POST /api/ads/:id/pass
+// Manager is unable to post; triggers immediate handover to next cyclical manager
+router.post('/:id/pass', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const ad = await prisma.ad.findUnique({ where: { id: req.params['id'] } });
+    if (!ad) { res.status(404).json({ error: 'Promotion not found' }); return; }
+
+    const isAssigned = ad.assignedToId === req.user!.id;
+    const isManagerOrAdmin = req.user!.role === 'MANAGER' || req.user!.role === 'ADMIN';
+
+    if (!isAssigned && !isManagerOrAdmin) {
+      res.status(403).json({ error: 'Not authorized to pass this promotion' });
+      return;
+    }
+
+    const result = await reassignUnresponsiveOrUnableAd(ad.id, ad.assignedToId, 'UNABLE_TO_POST');
+    if (!result.success) {
+      res.status(400).json({ error: result.message || 'Failed to reassign promotion' });
+      return;
+    }
+
+    const updated = await prisma.ad.findUnique({
+      where: { id: ad.id },
+      include: {
+        channel: { select: { id: true, name: true, username: true, color: true } },
+        assignedTo: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    res.json({ message: 'Promotion successfully passed to next manager', ad: updated, newManager: result.newManager });
+  } catch (err) {
+    console.error('Error passing promotion:', err);
+    res.status(500).json({ error: 'Failed to pass promotion' });
   }
 });
 

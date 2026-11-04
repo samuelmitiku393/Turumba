@@ -104,7 +104,7 @@ export default function AdsPage() {
       {/* Header & Filters (Sticky) */}
       <div className="sticky top-0 z-10 bg-[var(--tg-secondary)]/80 backdrop-blur-md px-4 pt-4 pb-3 space-y-3 border-b border-[var(--tg-border)]">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-[var(--tg-text)]">Advertisements</h1>
+          <h1 className="text-2xl font-bold text-[var(--tg-text)]">Promotions</h1>
           <div className="flex bg-tg-bg rounded-lg border border-[var(--tg-border)] p-1">
             <button
               onClick={() => setView('list')}
@@ -398,9 +398,9 @@ export default function AdsPage() {
               <button
                 onClick={() => bulkApproveMut.mutate(selectedIds)}
                 disabled={bulkApproveMut.isPending || bulkDeleteMut.isPending}
-                className="btn-primary py-2 px-4 text-xs font-bold bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-md transition-all active:scale-95"
+                className="btn-primary py-2 px-4 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition-all active:scale-95"
               >
-                {bulkApproveMut.isPending ? 'Approving...' : 'Approve'}
+                {bulkApproveMut.isPending ? 'Approving...' : 'Approve & Assign'}
               </button>
             )}
             <button

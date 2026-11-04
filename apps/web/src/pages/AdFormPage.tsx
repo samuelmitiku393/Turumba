@@ -16,10 +16,9 @@ const adSchema = z.object({
   content: z.string().min(1, 'Required'),
   advertiserName: z.string().min(1, 'Required'),
   channelId: z.string().min(1, 'Required'),
-  durationDays: z.number().min(1),
+  durationDays: z.number().min(1, 'At least 1 day required'),
   scheduledAt: z.string().optional(),
   assignedToId: z.string().optional(),
-  revenue: z.number().optional(),
   mediaUrls: z.array(z.string()).default([]),
   // Recurrence options
   isRecurring: z.boolean().optional().default(false),
@@ -68,7 +67,6 @@ export default function AdFormPage() {
         durationDays: ad.durationDays,
         scheduledAt: ad.scheduledAt ? format(new Date(ad.scheduledAt), "yyyy-MM-dd'T'HH:mm") : '',
         assignedToId: ad.assignedToId || '',
-        revenue: ad.revenue || undefined,
         mediaUrls: ad.mediaUrls || [],
       })
     }
@@ -261,10 +259,12 @@ export default function AdFormPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign To</label>
-                  <select {...register('assignedToId')} className="input py-0 h-11">
-                    <option value="">Unassigned</option>
-                    {team?.map(u => <option key={u.id} value={u.id}>{u.firstName}</option>)}
+                  <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign Manager</label>
+                  <select {...register('assignedToId')} className="input py-0 h-11 text-xs">
+                    <option value="">Auto-Assign (Duty / Cyclical)</option>
+                    {team?.filter(u => u.role === 'MANAGER' || u.role === 'ADMIN').map(u => (
+                      <option key={u.id} value={u.id}>{u.firstName} ({u.role})</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -294,19 +294,16 @@ export default function AdFormPage() {
                 <input type="datetime-local" {...register('scheduledAt')} className="input h-11" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign To</label>
-                <select {...register('assignedToId')} className="input py-0 h-11">
-                  <option value="">Unassigned</option>
-                  {team?.map(u => <option key={u.id} value={u.id}>{u.firstName}</option>)}
+                <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Assign Manager</label>
+                <select {...register('assignedToId')} className="input py-0 h-11 text-xs">
+                  <option value="">Auto-Assign (Duty / Cyclical)</option>
+                  {team?.filter(u => u.role === 'MANAGER' || u.role === 'ADMIN').map(u => (
+                    <option key={u.id} value={u.id}>{u.firstName} ({u.role})</option>
+                  ))}
                 </select>
               </div>
             </div>
           )}
-
-          <div>
-            <label className="block text-xs font-semibold text-[var(--tg-hint)] mb-1">Expected Revenue (ETB)</label>
-            <input type="number" {...register('revenue', { valueAsNumber: true })} className="input" placeholder="0.00" />
-          </div>
         </div>
 
         {/* Bottom Actions */}

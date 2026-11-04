@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell, Tv2, FileSpreadsheet } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Megaphone, Users, Settings, Plus, Bell, Tv2, CalendarClock } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import { notificationsApi, authApi } from '../api/endpoints'
@@ -10,11 +10,11 @@ import { useEffect } from 'react'
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
+  { to: '/duty',      icon: CalendarClock,  label: 'Duty' },
+  { to: '/ads',       icon: Megaphone,      label: 'Promos' },
   { to: '/calendar',  icon: CalendarDays,   label: 'Calendar' },
   { to: '/channels',  icon: Tv2,            label: 'Channels' },
-  { to: '/ads',       icon: Megaphone,       label: 'Ads' },
   { to: '/team',      icon: Users,           label: 'Team' },
-  { to: '/reports',   icon: FileSpreadsheet, label: 'Reports' },
   { to: '/settings',  icon: Settings,        label: 'Settings' },
 ]
 
@@ -96,9 +96,6 @@ export default function Layout() {
            style={{ background: 'var(--tg-bg)', borderTop: '1px solid var(--tg-border)' }}>
         <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
           {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
-            // Hide Reports for non-admins (only if user is loaded and not ADMIN)
-            if (to === '/reports' && user && user.role !== 'ADMIN') return null
-            
             const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
             return (
               <button

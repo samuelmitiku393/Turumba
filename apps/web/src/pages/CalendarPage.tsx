@@ -46,14 +46,22 @@ export default function CalendarPage() {
     <div className="flex flex-col h-full bg-[var(--tg-secondary)]">
       <div className="bg-[var(--tg-bg)] px-4 py-3 border-b border-[var(--tg-border)] flex items-center justify-between">
         <h1 className="text-xl font-bold text-[var(--tg-text)]">Calendar</h1>
-        <select
-          value={channelId}
-          onChange={e => setChannelId(e.target.value)}
-          className="input h-9 py-0 text-xs w-auto max-w-[140px] truncate rounded-full"
-        >
-          <option value="">All Channels</option>
-          {channels?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/duty')}
+            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-[var(--tg-button)]/10 text-[var(--tg-button)] flex items-center gap-1 active:scale-95 transition-all"
+          >
+            Duty Roster ➔
+          </button>
+          <select
+            value={channelId}
+            onChange={e => setChannelId(e.target.value)}
+            className="input h-9 py-0 text-xs w-auto max-w-[140px] truncate rounded-full"
+          >
+            <option value="">All Channels</option>
+            {channels?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="flex-1 p-2 h-[calc(100dvh-120px)]">

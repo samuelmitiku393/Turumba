@@ -14,6 +14,7 @@ import ReportsPage from './pages/ReportsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
+import DutyRosterPage from './pages/DutyRosterPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -46,6 +47,7 @@ export default function App() {
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/duty" element={<DutyRosterPage />} />
           <Route path="/ads" element={<AdsPage />} />
           <Route path="/ads/new" element={<AdFormPage />} />
           <Route path="/ads/:id" element={<AdDetailPage />} />

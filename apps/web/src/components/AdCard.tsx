@@ -115,11 +115,6 @@ export default function AdCard({ ad, view = 'list', isExpanded = false, onToggle
                 <span className="text-[10px]">{ad._count.chatMessages}</span>
               </div>
             )}
-            {ad.revenue && (
-              <span className="text-[10px] font-bold text-green-600 ml-auto">
-                Total: {ad.currency} {Number(ad.revenue).toLocaleString()}
-              </span>
-            )}
           </div>
         </motion.div>
       </div>
@@ -211,11 +206,6 @@ export default function AdCard({ ad, view = 'list', isExpanded = false, onToggle
             <MessageCircle className="w-3 h-3" />
             <span className="text-[10px]">{ad._count.chatMessages}</span>
           </div>
-        )}
-        {ad.revenue && (
-          <span className="text-[10px] font-semibold text-green-600 ml-auto">
-            {ad.currency} {Number(ad.revenue).toLocaleString()}
-          </span>
         )}
       </div>
     </motion.div>

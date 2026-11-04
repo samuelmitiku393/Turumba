@@ -50,6 +50,15 @@ export default function AdDetailPage() {
     }
   })
 
+  const passMut = useMutation({
+    mutationFn: () => adsApi.pass(id!),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
+      toast.success(`Promotion reassigned to ${res.newManager?.firstName || 'next manager'}!`)
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to pass promotion')
+  })
+
   const approveGroupMut = useMutation({
     mutationFn: (gId: string) => adsApi.approveGroup(gId),
     onSuccess: () => {
@@ -274,11 +283,13 @@ export default function AdDetailPage() {
             </div>
           </div>
 
-          {ad.revenue && (
-            <div className="mt-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20 inline-block">
-              <span className="text-xs text-green-600 font-semibold">Revenue: {ad.currency} {Number(ad.revenue).toLocaleString()}</span>
+          {ad.reassignCount && ad.reassignCount > 0 ? (
+            <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 inline-block">
+              <span className="text-xs text-amber-600 font-semibold">
+                🔄 Reassigned {ad.reassignCount} time{ad.reassignCount > 1 ? 's' : ''} (Duty rotation)
+              </span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Content & Media */}
@@ -322,17 +333,39 @@ export default function AdDetailPage() {
             )}
             {ad.status === 'PENDING_APPROVAL' && isManager && (
               <>
-                <button onClick={() => statusMut.mutate({ status: 'SCHEDULED' })} className="btn-primary bg-green-500 text-white">Approve & Schedule</button>
+                <button
+                  onClick={() => statusMut.mutate({ status: 'SCHEDULED' })}
+                  className="btn-primary bg-green-600 text-white font-bold"
+                >
+                  ✅ Approve Promotion (Payment Confirmed)
+                </button>
                 <button onClick={() => {
                   const reason = prompt('Rejection reason:')
                   if (reason) statusMut.mutate({ status: 'REJECTED', reason })
                 }} className="btn-danger">Reject</button>
               </>
             )}
-            {ad.status === 'SCHEDULED' && isManager && (
-              <button onClick={() => statusMut.mutate({ status: 'ACTIVE' })} className="btn-primary bg-green-500 text-white">
-                Set Active
-              </button>
+            {ad.status === 'SCHEDULED' && (
+              <>
+                {isManager && (
+                  <button onClick={() => statusMut.mutate({ status: 'ACTIVE' })} className="btn-primary bg-green-600 text-white">
+                    Mark as Posted (Set Active)
+                  </button>
+                )}
+                {(ad.assignedToId === user?.id || isManager) && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Are you unable to make this post? It will immediately be passed to the next manager in the rotation.')) {
+                        passMut.mutate()
+                      }
+                    }}
+                    disabled={passMut.isPending}
+                    className="btn-secondary text-amber-600 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all text-xs font-semibold"
+                  >
+                    ⚠️ Unable to Post (Handover)
+                  </button>
+                )}
+              </>
             )}
             {ad.status === 'ACTIVE' && isManager && (
               <button onClick={() => statusMut.mutate({ status: 'EXPIRED' })} className="btn-secondary">
