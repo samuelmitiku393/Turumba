@@ -37,9 +37,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
-      staleTime: 30_000,       // 30-second polling
-      refetchInterval: 30_000,
+      staleTime: 30_000,       // cache is fresh for 30s
       refetchOnWindowFocus: true,
+      // No global refetchInterval — only queries that need it set it explicitly
     },
   },
 })

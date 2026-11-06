@@ -9,6 +9,8 @@ router.use(authenticate);
 router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const now = new Date();
+    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+    const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999);
     const weekFromNow = new Date(now.getTime() + 7 * 86400000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -26,10 +28,7 @@ router.get('/dashboard', async (_req: AuthRequest, res: Response): Promise<void>
       prisma.ad.count({ where: { status: 'ACTIVE' } }),
       prisma.ad.count({
         where: {
-          scheduledAt: {
-            gte: new Date(now.setHours(0, 0, 0, 0)),
-            lte: new Date(now.setHours(23, 59, 59, 999)),
-          },
+          scheduledAt: { gte: todayStart, lte: todayEnd },
           status: 'SCHEDULED',
         },
       }),

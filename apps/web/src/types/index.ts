@@ -75,7 +75,6 @@ export interface Ad {
   approvedById?: string
   approvedBy?: Pick<User, 'id' | 'firstName' | 'lastName'>
   approvedAt?: string
-  templateId?: string
   revenue?: number
   currency: string
   notes?: string
@@ -127,16 +126,6 @@ export interface Notification {
   createdAt: string
 }
 
-export interface Template {
-  id: string
-  name: string
-  content: string
-  mediaUrls: string[]
-  advertiserName?: string
-  defaultDuration: number
-  createdAt: string
-}
-
 export interface ManagerDuty {
   id: string
   date: string // YYYY-MM-DD
@@ -153,7 +142,6 @@ export interface TodayDutyResponse {
   effectiveManager: User | null
   activeManagers: Array<Pick<User, 'id' | 'firstName' | 'lastName' | 'username' | 'avatarUrl' | 'role'>>
 }
-
 // API response shapes
 export interface PaginatedResponse<T> {
   data: T[]

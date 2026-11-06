@@ -26,12 +26,28 @@ export default function AdDetailPage() {
   })
 
   const statusMut = useMutation({
-    mutationFn: ({ status, reason }: { status: string; reason?: string }) => adsApi.updateStatus(id!, status, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ad', id] })
-      toast.success('Status updated')
+    mutationFn: ({ status, reason }: { status: string; reason?: string }) =>
+      adsApi.updateStatus(id!, status, reason),
+    // Optimistically update the cached ad so the UI flips instantly
+    onMutate: async ({ status }) => {
+      await queryClient.cancelQueries({ queryKey: ['ad', id] })
+      const previous = queryClient.getQueryData(['ad', id])
+      queryClient.setQueryData(['ad', id], (old: any) =>
+        old ? { ...old, status } : old
+      )
+      return { previous }
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to update status')
+    onError: (_err: any, _vars, context: any) => {
+      // Roll back on failure
+      if (context?.previous) queryClient.setQueryData(['ad', id], context.previous)
+      toast.error(_err.response?.data?.error || 'Failed to update status')
+    },
+    onSuccess: () => toast.success('Status updated'),
+    onSettled: () => {
+      // Always re-sync from server after success or error
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
+      queryClient.invalidateQueries({ queryKey: ['ads'] })
+    },
   })
 
   const chatMut = useMutation({

@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma/client';
-import { authenticate, requireAdmin, requireManager, AuthRequest } from '../middleware/auth';
+import { authenticate, requireAdmin, requireManager, AuthRequest, invalidateUserCache } from '../middleware/auth';
 import { logActivity } from '../services/activityService';
 
 const router = Router();
@@ -68,6 +68,7 @@ router.patch('/:id/role', requireAdmin, async (req: AuthRequest, res: Response):
       data: { role: role as 'ADMIN' | 'MANAGER' | 'POSTER' },
     });
     await logActivity(req.user!.id, 'role_changed', undefined, { targetUserId: member.id, newRole: role });
+    invalidateUserCache(member.id); // flush cache so new role takes effect immediately
     res.json({ ...member, telegramId: member.telegramId.toString() });
   } catch (err) {
     console.error(err);
@@ -83,6 +84,7 @@ router.patch('/:id/status', requireAdmin, async (req: AuthRequest, res: Response
       where: { id: req.params['id'] },
       data: { isActive },
     });
+    invalidateUserCache(member.id); // flush cache so isActive change takes effect immediately
     res.json({ ...member, telegramId: member.telegramId.toString() });
   } catch (err) {
     console.error(err);
@@ -124,6 +126,7 @@ router.patch('/:id/approval', requireAdmin, async (req: AuthRequest, res: Respon
     });
     
     await logActivity(req.user!.id, 'approval_changed', undefined, { targetUserId: member.id, newStatus: member.status });
+    invalidateUserCache(member.id); // flush cache so approval/rejection takes effect immediately
     res.json({ ...member, telegramId: member.telegramId.toString() });
   } catch (err) {
     console.error(err);
@@ -172,6 +175,7 @@ router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response): Pro
 
     await prisma.user.delete({ where: { id: targetId } });
     
+    invalidateUserCache(targetId);
     await logActivity(req.user!.id, 'deleted_user', undefined, { targetUserId: targetId, username: member.username });
     res.json({ message: 'User deleted' });
   } catch (err: unknown) {

@@ -30,42 +30,50 @@ router.post('/login', async (req, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if this is the first user
+    // Check if this is the first user — first user becomes auto-admin
     const userCount = await prisma.user.count();
     const defaultRole = userCount === 0 ? 'ADMIN' : 'POSTER';
 
-    // Upsert user in database
-    const user = await prisma.user.upsert({
+    // Find or create user (without updating profile yet)
+    let user = await prisma.user.findUnique({
       where: { telegramId: BigInt(telegramUser.id) },
-      update: {
-        username: telegramUser.username,
-        firstName: telegramUser.first_name,
-        lastName: telegramUser.last_name,
-        avatarUrl: telegramUser.photo_url,
-        // Auto-promote first user to ADMIN and ACTIVE if they are the only one
-        role: userCount <= 1 ? 'ADMIN' : undefined,
-        status: userCount <= 1 ? 'ACTIVE' : undefined,
-      },
-      create: {
-        telegramId: BigInt(telegramUser.id),
-        username: telegramUser.username,
-        firstName: telegramUser.first_name,
-        lastName: telegramUser.last_name,
-        avatarUrl: telegramUser.photo_url,
-        role: defaultRole,
-        status: defaultRole === 'ADMIN' ? 'ACTIVE' : 'PENDING',
-      },
     });
 
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          telegramId: BigInt(telegramUser.id),
+          username: telegramUser.username,
+          firstName: telegramUser.first_name,
+          lastName: telegramUser.last_name,
+          avatarUrl: telegramUser.photo_url,
+          role: defaultRole,
+          status: defaultRole === 'ADMIN' ? 'ACTIVE' : 'PENDING',
+        },
+      });
+    }
+
+    // Gate: block pending / rejected users before any profile write
     if (user.status === 'PENDING') {
       res.status(403).json({ error: 'pending_approval', message: 'Your account is pending approval by an administrator.' });
       return;
     }
-
     if (user.status === 'REJECTED') {
       res.status(403).json({ error: 'rejected', message: 'Your access to the system has been rejected.' });
       return;
     }
+
+    // User is active — refresh profile info from Telegram and promote first user
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        username: telegramUser.username,
+        firstName: telegramUser.first_name,
+        lastName: telegramUser.last_name,
+        avatarUrl: telegramUser.photo_url,
+        ...(userCount <= 1 ? { role: 'ADMIN', status: 'ACTIVE' } : {}),
+      },
+    });
 
     const token = jwt.sign(
       { userId: user.id },

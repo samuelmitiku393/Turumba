@@ -2,7 +2,7 @@ import api from './client'
 import type {
   Ad, AdListResponse, Channel, User, Notification,
   DashboardStats, ActivityLog, RevenueByAdvertiser,
-  ChannelAnalytics, TeamAnalytics, Template,
+  ChannelAnalytics, TeamAnalytics,
   ManagerDuty, TodayDutyResponse,
 } from '../types'
 
@@ -137,13 +137,6 @@ export const uploadApi = {
       '/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } }
     ).then(r => r.data)
   },
-}
-
-// ── Templates ─────────────────────────────────────────────────────────────────
-export const templatesApi = {
-  list: () => api.get<Template[]>('/templates').then(r => r.data),
-  create: (data: Partial<Template>) => api.post<Template>('/templates', data).then(r => r.data),
-  delete: (id: string) => api.delete<{ message: string }>(`/templates/${id}`).then(r => r.data),
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

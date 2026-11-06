@@ -8,6 +8,33 @@ export interface AuthRequest extends Request {
   user?: User;
 }
 
+// ── Tiny user cache to avoid a DB hit on every request ───────────────────────
+// Entries expire after 60 s; cache is bounded to 500 entries.
+const USER_CACHE_TTL_MS = 60_000;
+const USER_CACHE_MAX = 500;
+const userCache = new Map<string, { user: User; expiresAt: number }>();
+
+function getCachedUser(id: string): User | null {
+  const entry = userCache.get(id);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { userCache.delete(id); return null; }
+  return entry.user;
+}
+
+function setCachedUser(user: User): void {
+  if (userCache.size >= USER_CACHE_MAX) {
+    // Evict the oldest key
+    const firstKey = userCache.keys().next().value;
+    if (firstKey) userCache.delete(firstKey);
+  }
+  userCache.set(user.id, { user, expiresAt: Date.now() + USER_CACHE_TTL_MS });
+}
+
+/** Call this whenever a user's role/status changes so the cache is immediately consistent. */
+export function invalidateUserCache(userId: string): void {
+  userCache.delete(userId);
+}
+
 /**
  * Verifies Telegram Web App initData HMAC and attaches req.user
  */
@@ -27,7 +54,13 @@ export async function authenticate(
     const secret = process.env.JWT_SECRET!;
     const payload = jwt.verify(token, secret) as { userId: string };
 
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    // Try cache first to avoid a DB round-trip on every request
+    let user = getCachedUser(payload.userId);
+    if (!user) {
+      user = await prisma.user.findUnique({ where: { id: payload.userId } });
+      if (user) setCachedUser(user);
+    }
+
     if (!user || !user.isActive) {
       res.status(401).json({ error: 'User not found or inactive' });
       return;
